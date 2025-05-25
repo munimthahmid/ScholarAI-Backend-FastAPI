@@ -24,7 +24,7 @@ async def test_gemini_integration():
     """Test the WebSearch agent WITH Gemini AI integration"""
 
     logger.info("🤖 Starting Gemini AI Integration Test")
-    logger.info("🔑 Using API Key: AIzaSyDvrZ_rv1kd115j4-O1cO3skyt6JJ4MJeE")
+    logger.info("🔑 Using API Key: AIzaSyAX4osMXYhYTMUYuDPBGEWAEwbX7VslByg")
     logger.info("🧠 Model: gemini-2.0-flash-lite")
 
     # Create the agent
@@ -121,7 +121,7 @@ async def test_gemini_initialization():
         import google.generativeai as genai
 
         # Test API key configuration
-        api_key = "AIzaSyDvrZ_rv1kd115j4-O1cO3skyt6JJ4MJeE"
+        api_key = "AIzaSyAX4osMXYhYTMUYuDPBGEWAEwbX7VslByg"
         genai.configure(api_key=api_key)
 
         # Test model creation
