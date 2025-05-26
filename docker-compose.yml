@@ -1,0 +1,42 @@
+services:
+  # FastAPI Application
+  fastapi-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: scholarai-fastapi
+    ports:
+      - "8001:8001"
+    environment:
+      # FastAPI Configuration
+      FASTAPI_HOST: 0.0.0.0
+      FASTAPI_PORT: 8001
+      
+      # RabbitMQ Configuration (connects to existing core-rabbitmq)
+      RABBITMQ_HOST: core-rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-scholar}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-scholar123}
+      
+      # Application Environment
+      PYTHONPATH: /app
+      
+    env_file:
+      - .env
+    volumes:
+      # Mount source code for development (comment out for production)
+      - .:/app
+    networks:
+      - scholar_network_alias
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  scholar_network_alias:
+    name: docker_scholar-network
+    external: true 
