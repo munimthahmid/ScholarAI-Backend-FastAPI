@@ -1,0 +1,62 @@
+# Git files
+.git
+.gitignore
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+docker.sh
+
+# Python virtual environment
+.venv
+venv
+*/.venv
+*/venv
+
+# Python cache files
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# IDE and editor specific files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Test files and reports
+pytest.ini
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Documentation (if not needed in image)
+# docs/
+
+# Other temporary or local files
+*.tmp
+*.swp
+
+# Poetry cache
+.poetry_cache/
+poetry.lock # Copied separately in Dockerfile, then all copied, can be excluded here if preferred but COPY . . will overwrite if not careful in Dockerfile stages
