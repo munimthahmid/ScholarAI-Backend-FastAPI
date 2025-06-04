@@ -57,10 +57,10 @@ class SearchFilterService:
     def _get_filter_instance(self, source_name: str) -> BaseSearchFilter:
         """Get or create a filter instance for the given source"""
         if source_name not in self._filter_cache:
-            self._filter_cache[source_name] = FilterFactory.create_filter(
-                source_name, 
-                self.recent_years_filter
-            )
+            filter_instance = FilterFactory.create_filter(source_name)
+            # Set the recent years filter after creation
+            filter_instance.recent_years_filter = self.recent_years_filter
+            self._filter_cache[source_name] = filter_instance
         return self._filter_cache[source_name]
     
     def _build_fallback_filters(self) -> Dict[str, Any]:
@@ -73,7 +73,7 @@ class SearchFilterService:
     
     def get_supported_sources(self) -> list:
         """Get list of academic sources that support filtering"""
-        return FilterFactory.get_supported_sources()
+        return FilterFactory.get_available_sources()
     
     def update_recent_years_filter(self, years: int):
         """Update the recent years filter setting for all cached filters"""

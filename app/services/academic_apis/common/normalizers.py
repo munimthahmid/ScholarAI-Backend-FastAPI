@@ -163,7 +163,7 @@ class PaperNormalizer:
                     return False
         
         # Default to True for most academic sources
-        return source in ["semantic_scholar", "google_scholar", "crossref", "pubmed"]
+        return source in ["semantic_scholar", "crossref", "pubmed"]
     
     @staticmethod
     def _is_open_access(raw_paper: Dict[str, Any]) -> bool:
@@ -222,13 +222,6 @@ class PaperNormalizer:
                 "isbn": raw_paper.get("ISBN", []),
                 "license": raw_paper.get("license", []),
                 "funder": raw_paper.get("funder", []),
-            })
-        
-        elif source == "google_scholar":
-            source_data.update({
-                "scholarId": raw_paper.get("scholar_id"),
-                "gsRank": raw_paper.get("gs_rank"),
-                "venue": raw_paper.get("venue"),
             })
         
         return source_data 

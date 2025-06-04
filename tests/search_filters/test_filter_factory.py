@@ -2,13 +2,14 @@
 Tests for FilterFactory and SearchFilterService
 """
 import pytest
+from unittest.mock import Mock
+from datetime import datetime, date
 
 from app.services.websearch.search_filters import FilterFactory, BaseSearchFilter
 from app.services.websearch.search_filters.semantic_scholar import SemanticScholarFilter
 from app.services.websearch.search_filters.crossref import CrossrefFilter
 from app.services.websearch.search_filters.pubmed import PubMedFilter
 from app.services.websearch.search_filters.arxiv import ArxivFilter
-from app.services.websearch.search_filters.google_scholar import GoogleScholarFilter
 from app.services.websearch.filter_service import SearchFilterService
 
 
@@ -19,14 +20,15 @@ class TestFilterFactory:
         """Test creating Semantic Scholar filter"""
         filter_instance = FilterFactory.create_filter("Semantic Scholar")
         
+        assert filter_instance is not None
         assert isinstance(filter_instance, SemanticScholarFilter)
         assert filter_instance.source_name == "Semantic Scholar"
-        assert filter_instance.recent_years_filter == 5  # default
     
     def test_create_crossref_filter(self):
         """Test creating Crossref filter"""
         filter_instance = FilterFactory.create_filter("Crossref")
         
+        assert filter_instance is not None
         assert isinstance(filter_instance, CrossrefFilter)
         assert filter_instance.source_name == "Crossref"
     
@@ -34,6 +36,7 @@ class TestFilterFactory:
         """Test creating PubMed filter"""
         filter_instance = FilterFactory.create_filter("PubMed")
         
+        assert filter_instance is not None
         assert isinstance(filter_instance, PubMedFilter)
         assert filter_instance.source_name == "PubMed"
     
@@ -41,74 +44,48 @@ class TestFilterFactory:
         """Test creating arXiv filter"""
         filter_instance = FilterFactory.create_filter("arXiv")
         
+        assert filter_instance is not None
         assert isinstance(filter_instance, ArxivFilter)
         assert filter_instance.source_name == "arXiv"
     
-    def test_create_google_scholar_filter(self):
-        """Test creating Google Scholar filter"""
-        filter_instance = FilterFactory.create_filter("Google Scholar")
-        
-        assert isinstance(filter_instance, GoogleScholarFilter)
-        assert filter_instance.source_name == "Google Scholar"
-    
-    def test_create_filter_with_custom_years(self):
-        """Test creating filter with custom recent years setting"""
-        filter_instance = FilterFactory.create_filter("Semantic Scholar", recent_years_filter=3)
-        
-        assert filter_instance.recent_years_filter == 3
-    
-    def test_create_filter_unknown_source(self):
-        """Test creating filter for unknown source"""
-        with pytest.raises(ValueError, match="No filter implementation for source"):
+    def test_unsupported_source(self):
+        """Test handling of unsupported source"""
+        with pytest.raises(ValueError) as exc_info:
             FilterFactory.create_filter("Unknown Source")
+        
+        assert "Filter not available" in str(exc_info.value)
     
-    def test_get_supported_sources(self):
-        """Test getting list of supported sources"""
-        sources = FilterFactory.get_supported_sources()
+    def test_get_available_sources(self):
+        """Test getting list of available sources"""
+        sources = FilterFactory.get_available_sources()
         
         expected_sources = [
             "Semantic Scholar",
-            "PubMed", 
-            "arXiv",
-            "Crossref",
-            "Google Scholar"
+            "arXiv", 
+            "PubMed",
+            "Crossref"
         ]
         
+        assert len(sources) == len(expected_sources)
         for source in expected_sources:
             assert source in sources
+
+    def test_get_filter_capabilities(self):
+        """Test getting filter capabilities for different sources"""
         
-        assert len(sources) == len(expected_sources)
-    
-    def test_register_custom_filter(self):
-        """Test registering a custom filter implementation"""
+        # Test Semantic Scholar capabilities
+        ss_caps = FilterFactory.get_filter_capabilities("Semantic Scholar")
+        assert isinstance(ss_caps, dict)
+        assert "supported_fields" in ss_caps
         
-        class CustomFilter(BaseSearchFilter):
-            @property
-            def source_name(self) -> str:
-                return "Custom Source"
-            
-            def _add_date_filter(self, filters):
-                filters["custom_date"] = "test"
-            
-            def _add_domain_filter(self, filters, domain):
-                filters["custom_domain"] = domain
+        # Test ArXiv capabilities  
+        arxiv_caps = FilterFactory.get_filter_capabilities("arXiv")
+        assert isinstance(arxiv_caps, dict)
+        assert "supported_fields" in arxiv_caps
         
-        # Register the custom filter
-        FilterFactory.register_filter("Custom Source", CustomFilter)
-        
-        # Test that it's now available
-        assert "Custom Source" in FilterFactory.get_supported_sources()
-        
-        # Test creating instance
-        filter_instance = FilterFactory.create_filter("Custom Source")
-        assert isinstance(filter_instance, CustomFilter)
-        assert filter_instance.source_name == "Custom Source"
-        
-        # Test functionality
-        filters = filter_instance.build_filters(domain="test")
-        assert "custom_date" in filters
-        assert "custom_domain" in filters
-        assert filters["custom_domain"] == "test"
+        # Test unsupported source
+        unknown_caps = FilterFactory.get_filter_capabilities("Unknown")
+        assert unknown_caps == {}
 
 
 class TestSearchFilterService:
@@ -167,7 +144,6 @@ class TestSearchFilterService:
         assert "Crossref" in sources
         assert "PubMed" in sources
         assert "arXiv" in sources
-        assert "Google Scholar" in sources
     
     def test_update_recent_years_filter(self, service):
         """Test updating recent years filter for all cached instances"""

@@ -1,57 +1,70 @@
 """
-Search filter implementations for different academic sources
+Search filters for academic sources.
 """
+
 from .base import BaseSearchFilter, DateFilterMixin
 from .semantic_scholar import SemanticScholarFilter
-from .pubmed import PubMedFilter
 from .arxiv import ArxivFilter
+from .pubmed import PubMedFilter
 from .crossref import CrossrefFilter
-from .google_scholar import GoogleScholarFilter
 
-from typing import Dict, Type
-
-
+# Filter factory for creating source-specific filters
 class FilterFactory:
-    """
-    Factory class for creating appropriate filter instances based on source name.
-    """
+    """Factory for creating source-specific search filters"""
     
-    _filters: Dict[str, Type[BaseSearchFilter]] = {
+    # Mapping of source names to filter classes
+    _filters = {
         "Semantic Scholar": SemanticScholarFilter,
-        "PubMed": PubMedFilter,
         "arXiv": ArxivFilter,
+        "PubMed": PubMedFilter,
         "Crossref": CrossrefFilter,
-        "Google Scholar": GoogleScholarFilter,
     }
     
     @classmethod
-    def create_filter(cls, source_name: str, recent_years_filter: int = 5) -> BaseSearchFilter:
+    def create_filter(cls, source_name: str) -> BaseSearchFilter:
         """
         Create a filter instance for the specified source.
         
         Args:
             source_name: Name of the academic source
-            recent_years_filter: Number of recent years to filter
             
         Returns:
-            Appropriate filter instance
+            Filter instance for the source
             
         Raises:
-            ValueError: If source_name is not supported
+            ValueError: If source is not supported
         """
-        filter_class = cls._filters.get(source_name)
-        if not filter_class:
-            raise ValueError(f"No filter implementation for source: {source_name}")
+        if source_name not in cls._filters:
+            available = ", ".join(cls._filters.keys())
+            raise ValueError(f"Filter not available for '{source_name}'. Available: {available}")
         
-        return filter_class(recent_years_filter=recent_years_filter)
+        filter_class = cls._filters[source_name]
+        return filter_class()
     
     @classmethod
-    def get_supported_sources(cls) -> list:
-        """Get list of supported academic sources"""
+    def get_available_sources(cls) -> list:
+        """Get list of sources with available filters"""
         return list(cls._filters.keys())
     
     @classmethod
-    def register_filter(cls, source_name: str, filter_class: Type[BaseSearchFilter]):
+    def get_filter_capabilities(cls, source_name: str) -> dict:
+        """
+        Get filter capabilities for a specific source.
+        
+        Args:
+            source_name: Name of the academic source
+            
+        Returns:
+            Dictionary describing filter capabilities
+        """
+        if source_name not in cls._filters:
+            return {}
+        
+        filter_instance = cls.create_filter(source_name)
+        return filter_instance.get_filter_info()
+    
+    @classmethod
+    def register_filter(cls, source_name: str, filter_class):
         """
         Register a new filter implementation.
         
@@ -66,9 +79,8 @@ __all__ = [
     "BaseSearchFilter",
     "DateFilterMixin", 
     "SemanticScholarFilter",
+    "ArxivFilter",
     "PubMedFilter",
-    "ArxivFilter", 
     "CrossrefFilter",
-    "GoogleScholarFilter",
-    "FilterFactory"
+    "FilterFactory",
 ] 

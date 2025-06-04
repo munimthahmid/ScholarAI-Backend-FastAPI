@@ -84,8 +84,6 @@ class BaseAcademicClient(ABC):
             return "arxiv"
         elif "crossref" in class_name:
             return "crossref"
-        elif "scholar" in class_name:
-            return "google_scholar"
         else:
             return "unknown"
 

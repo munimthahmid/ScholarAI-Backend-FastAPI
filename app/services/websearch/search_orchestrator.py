@@ -4,14 +4,14 @@ Multi-source academic search orchestrator
 import asyncio
 import logging
 import time
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
+from datetime import datetime
 
 from ..academic_apis.clients import (
     SemanticScholarClient,
     ArxivClient,
     CrossrefClient,
     PubMedClient,
-    GoogleScholarClient,
 )
 
 from .deduplication import PaperDeduplicationService
@@ -41,7 +41,7 @@ class MultiSourceSearchOrchestrator:
         # Initialize academic API clients
         self._init_api_clients()
         
-        # Active sources (Google Scholar disabled due to CAPTCHA issues)
+        # Active sources (Google Scholar removed)
         self.active_sources = [
             "Semantic Scholar",
             "arXiv",
@@ -58,7 +58,6 @@ class MultiSourceSearchOrchestrator:
             "arXiv": ArxivClient(),
             "Crossref": CrossrefClient(),
             "PubMed": PubMedClient(),
-            "Google Scholar": GoogleScholarClient()  # Available but not in active sources
         }
         
         logger.debug(f"📡 API clients initialized: {list(self.api_clients.keys())}")

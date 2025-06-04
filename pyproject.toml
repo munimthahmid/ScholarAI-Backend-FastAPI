@@ -30,8 +30,8 @@ tenacity = "^8.2.3"
 ratelimit = "^2.2.1"
 xmltodict = "^0.13.0"
 feedparser = "^6.0.10"
-scholarly = "^1.7.11"
 crossref-commons = "^0.0.7"
+pytest-asyncio = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"

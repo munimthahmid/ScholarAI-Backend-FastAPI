@@ -142,6 +142,10 @@ class ArxivFilter(BaseSearchFilter, DateFilterMixin):
         base_info.update({
             "date_format": "year_range",
             "available_optimizations": ["category_filter"],
+            "supported_fields": [
+                "Computer Science", "Mathematics", "Physics", "Statistics",
+                "Quantitative Biology", "Economics", "Electrical Engineering"
+            ],
             "supported_categories": [
                 "cs.*", "math.*", "physics.*", "astro-ph.*", "cond-mat.*",
                 "gr-qc", "hep-*", "math-ph", "nucl-th", "quant-ph",

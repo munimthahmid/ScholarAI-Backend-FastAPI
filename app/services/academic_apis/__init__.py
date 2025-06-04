@@ -1,49 +1,42 @@
 """
-Academic APIs module for sophisticated paper discovery and retrieval.
+Academic API services for research paper search and retrieval.
 
-This module provides a unified interface to multiple academic databases including:
-- Semantic Scholar: Comprehensive citation network and AI-powered paper analysis
+This module provides clients for various academic databases and APIs:
+- Semantic Scholar: AI-powered semantic search and citation analysis
+- arXiv: Physics, mathematics, computer science preprints
+- Crossref: DOI metadata and citation information  
 - PubMed: Biomedical and life sciences literature
-- ArXiv: Preprints in physics, mathematics, computer science
-- Crossref: DOI resolution and bibliographic metadata
-- Google Scholar: Broad academic search across disciplines
 
-The module uses common utilities and normalizers to provide consistent
-paper data structures across all sources.
+Each client implements a standardized interface for searching papers,
+retrieving metadata, and accessing citations/references.
 """
 
 from .clients import (
     SemanticScholarClient,
-    PubMedClient,
     ArxivClient,
     CrossrefClient,
-    GoogleScholarClient,
+    PubMedClient,
 )
 
 from .common import (
     BaseAcademicClient,
-    PaperNormalizer,
     RateLimitError,
     APIError,
-    InvalidResponseError,
+    PaperNormalizer,
 )
 
 __all__ = [
-    # Client classes
+    # Clients
     "SemanticScholarClient",
-    "PubMedClient", 
-    "ArxivClient",
+    "ArxivClient", 
     "CrossrefClient",
-    "GoogleScholarClient",
+    "PubMedClient",
     
-    # Base classes and utilities
+    # Common
     "BaseAcademicClient",
-    "PaperNormalizer",
-    
-    # Exceptions
     "RateLimitError",
     "APIError",
-    "InvalidResponseError",
+    "PaperNormalizer",
 ]
 
 __version__ = "2.0.0"

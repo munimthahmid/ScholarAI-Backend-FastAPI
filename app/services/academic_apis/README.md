@@ -1,259 +1,281 @@
-# Academic APIs Module
+# Academic APIs
 
-A unified, well-structured module for accessing multiple academic databases and APIs. This module provides consistent interfaces and data normalization across different academic sources.
+This module provides unified access to multiple academic databases and APIs for research paper discovery and retrieval.
 
-## 🏗️ Architecture Overview
+## Overview
 
-The module is organized into several key components:
+The Academic APIs module offers a standardized interface to search, retrieve, and analyze academic papers from various sources:
+
+- **Semantic Scholar**: AI-powered semantic search and citation analysis
+- **arXiv**: Physics, mathematics, computer science preprints  
+- **Crossref**: DOI metadata and citation information
+- **PubMed**: Biomedical and life sciences literature
+
+## Architecture
 
 ```
-academic_apis/
-├── __init__.py                 # Main module exports
-├── README.md                   # This documentation
-├── common/                     # Shared utilities and base classes
+app/services/academic_apis/
+├── __init__.py
+├── clients/
 │   ├── __init__.py
-│   ├── base_client.py         # Abstract base class for all clients
-│   ├── exceptions.py          # Common exception classes
-│   ├── normalizers.py         # Paper data normalization
-│   └── utils.py               # Utility functions
-├── parsers/                   # Response format parsers
+│   ├── semantic_scholar_client.py
+│   ├── arxiv_client.py
+│   ├── crossref_client.py
+│   └── pubmed_client.py
+├── common/
 │   ├── __init__.py
-│   ├── json_parser.py         # JSON response parsing
-│   ├── xml_parser.py          # XML response parsing (PubMed)
-│   └── feed_parser.py         # Atom/RSS feed parsing (arXiv)
-└── clients/                   # API client implementations
-    ├── __init__.py
-    ├── semantic_scholar_client.py
-    ├── pubmed_client.py
-    ├── arxiv_client.py
-    ├── crossref_client.py
-    └── google_scholar_client.py
+│   ├── base_client.py
+│   ├── exceptions.py
+│   └── normalizers.py
+└── README.md
 ```
 
-## 🔧 Key Features
+## Features
 
 ### Unified Interface
 All clients implement the same base interface:
-- `search_papers(query, limit, offset, filters)`
-- `get_paper_details(paper_id)`
-- `get_citations(paper_id, limit)`
-- `get_references(paper_id, limit)`
+- `search_papers()`: Search for papers by query
+- `get_paper_details()`: Get detailed paper information
+- `get_citations()`: Get papers that cite a given paper
+- `get_references()`: Get papers referenced by a given paper
 
-### Consistent Data Format
-All APIs return papers in a standardized format with fields like:
-- `title`, `doi`, `abstract`
-- `authors` (with ORCID, affiliation)
-- `publicationDate`, `venueName`, `publisher`
-- `citationCount`, `referenceCount`
-- `isOpenAccess`, `peerReviewed`
-- `paperUrl`, `pdfUrl`
+### Data Normalization
+Papers from different sources are normalized to a consistent format:
 
-### Common Utilities
-- **Rate limiting** and retry logic
-- **Caching** for improved performance
-- **Error handling** with custom exceptions
-- **Data normalization** across different API formats
-- **Field extraction** utilities (DOI, dates, authors, etc.)
+```python
+{
+    "title": "Paper Title",
+    "doi": "10.1000/example",
+    "publicationDate": "2023-01-15",
+    "authors": [{"name": "Author Name"}],
+    "abstract": "Paper abstract...",
+    "citationCount": 42,
+    "venue": "Journal Name",
+    "isOpenAccess": true,
+    "source": "semantic_scholar"
+}
+```
 
-## 🚀 Usage Examples
+### Rate Limiting & Retries
+- Automatic rate limiting with exponential backoff
+- Request retries with configurable attempts
+- Response caching to minimize API calls
+
+### Error Handling
+- Custom exception hierarchy
+- Graceful degradation on API failures
+- Comprehensive logging
+
+## Client Documentation
+
+### Semantic Scholar
+High-quality academic search with AI-powered features.
+
+**Features:**
+- Semantic search capabilities
+- Citation network analysis
+- Author disambiguation
+- Field of study classification
+
+**Rate Limits:** 100 requests/minute (with API key)
+
+**Example:**
+```python
+from app.services.academic_apis.clients import SemanticScholarClient
+
+async with SemanticScholarClient() as client:
+    papers = await client.search_papers("machine learning", limit=10)
+    for paper in papers:
+        print(f"{paper['title']} - {paper['citationCount']} citations")
+```
+
+### arXiv
+Preprint repository for physics, mathematics, computer science.
+
+**Features:**
+- Subject classification
+- Version tracking
+- Author search
+- Date range filtering
+
+**Rate Limits:** 3 requests/second
+
+**Example:**
+```python
+from app.services.academic_apis.clients import ArxivClient
+
+async with ArxivClient() as client:
+    papers = await client.search_papers(
+        "quantum computing",
+        filters={"categories": ["quant-ph"], "year_range": (2020, 2023)}
+    )
+```
+
+### Crossref
+DOI registration agency with extensive metadata.
+
+**Features:**
+- DOI resolution
+- Publisher metadata
+- Funding information
+- ORCID integration
+
+**Rate Limits:** 50 requests/second (polite pool)
+
+### PubMed
+Biomedical literature database.
+
+**Features:**
+- MeSH term search
+- Clinical trial filters
+- Publication type filtering
+- PMID/PMC lookup
+
+**Rate Limits:** 10 requests/second (with API key)
+
+## Usage Examples
 
 ### Basic Search
 ```python
-from app.services.academic_apis import SemanticScholarClient, PubMedClient
+import asyncio
+from app.services.academic_apis.clients import SemanticScholarClient
 
-# Search across multiple sources
-async def search_papers(query: str):
-    semantic_client = SemanticScholarClient(api_key="your_key")
-    pubmed_client = PubMedClient(api_key="your_key")
-    
-    # Both return the same normalized format
-    semantic_papers = await semantic_client.search_papers(query, limit=10)
-    pubmed_papers = await pubmed_client.search_papers(query, limit=10)
-    
-    return semantic_papers + pubmed_papers
+async def search_papers():
+    async with SemanticScholarClient() as client:
+        papers = await client.search_papers(
+            query="deep learning",
+            limit=20,
+            filters={"year_range": (2020, 2023)}
+        )
+        
+        for paper in papers:
+            print(f"Title: {paper['title']}")
+            print(f"Authors: {', '.join(a['name'] for a in paper['authors'])}")
+            print(f"Citations: {paper['citationCount']}")
+            print("-" * 50)
+
+asyncio.run(search_papers())
 ```
 
-### Advanced Filtering
+### Multi-Source Search
 ```python
-# Search with filters
-filters = {
-    "year": [2020, 2023],
-    "venue": "Nature",
-    "has_full_text": True
-}
-
-papers = await crossref_client.search_papers(
-    "machine learning", 
-    limit=20, 
-    filters=filters
+from app.services.academic_apis.clients import (
+    SemanticScholarClient, ArxivClient, PubMedClient
 )
+
+async def multi_source_search(query: str):
+    clients = [
+        SemanticScholarClient(),
+        ArxivClient(), 
+        PubMedClient()
+    ]
+    
+    all_papers = []
+    for client in clients:
+        async with client:
+            papers = await client.search_papers(query, limit=10)
+            all_papers.extend(papers)
+    
+    # Remove duplicates by DOI
+    unique_papers = {}
+    for paper in all_papers:
+        if paper['doi'] and paper['doi'] not in unique_papers:
+            unique_papers[paper['doi']] = paper
+    
+    return list(unique_papers.values())
 ```
 
 ### Citation Analysis
 ```python
-# Get citation network
-paper = await semantic_client.get_paper_details("paper_id")
-citations = await semantic_client.get_citations("paper_id", limit=50)
-references = await semantic_client.get_references("paper_id", limit=50)
+async def analyze_citations(paper_id: str):
+    async with SemanticScholarClient() as client:
+        # Get paper details
+        paper = await client.get_paper_details(paper_id)
+        print(f"Analyzing: {paper['title']}")
+        
+        # Get citing papers
+        citations = await client.get_citations(paper_id, limit=50)
+        print(f"Found {len(citations)} citing papers")
+        
+        # Get referenced papers
+        references = await client.get_references(paper_id, limit=50)
+        print(f"Found {len(references)} referenced papers")
+        
+        return {
+            'paper': paper,
+            'citations': citations,
+            'references': references
+        }
 ```
 
-## 📊 Supported APIs
+## Configuration
 
-### Semantic Scholar
-- **Strengths**: Comprehensive citation network, AI-powered analysis
-- **Best for**: Citation analysis, paper discovery, author metrics
-- **Rate limits**: 100 requests per 5 minutes (free tier)
+### API Keys
+Set API keys as environment variables:
 
-### PubMed
-- **Strengths**: Biomedical literature, MeSH terms, high-quality metadata
-- **Best for**: Medical/biological research, systematic reviews
-- **Rate limits**: 10 requests per second (with API key)
+```bash
+export SEMANTIC_SCHOLAR_API_KEY="your_key_here"
+export PUBMED_API_KEY="your_email@example.com"
+```
 
-### arXiv
-- **Strengths**: Latest preprints, full-text access, version history
-- **Best for**: Physics, math, computer science preprints
-- **Rate limits**: 3 requests per second
+### Rate Limiting
+Configure rate limits in client initialization:
 
-### Crossref
-- **Strengths**: DOI resolution, publisher metadata, funding info
-- **Best for**: Bibliographic metadata, DOI lookup, publisher data
-- **Rate limits**: 50 requests per second (polite pool)
-
-### Google Scholar
-- **Strengths**: Broad coverage, real-time citations, diverse sources
-- **Best for**: Comprehensive search, citation tracking
-- **Rate limits**: Conservative (requires scholarly library)
-
-## 🛠️ Common Utilities
-
-### Data Extraction
 ```python
-from app.services.academic_apis.common.utils import (
-    extract_doi, extract_date, clean_title, parse_authors
+client = SemanticScholarClient(
+    rate_limit_calls=50,  # requests per period
+    rate_limit_period=60,  # period in seconds
+    max_retries=3
 )
-
-# Extract structured data from raw API responses
-doi = extract_doi(raw_paper_data)
-pub_date = extract_date(raw_paper_data)
-authors = parse_authors(raw_paper_data["authors"])
 ```
 
-### Paper Normalization
-```python
-from app.services.academic_apis.common.normalizers import PaperNormalizer
+## Error Handling
 
-# Normalize papers from any source
-normalized_paper = PaperNormalizer.normalize(raw_paper, source="pubmed")
-```
-
-### Response Parsing
-```python
-from app.services.academic_apis.parsers import XMLParser, JSONParser
-
-# Parse different response formats
-pubmed_paper = XMLParser.parse_pubmed_article(xml_element)
-crossref_paper = JSONParser.parse_crossref_work(json_data)
-```
-
-## 🔒 Error Handling
-
-The module provides comprehensive error handling:
+The module provides specific exceptions for different error types:
 
 ```python
-from app.services.academic_apis.common.exceptions import (
-    RateLimitError, APIError, InvalidResponseError
-)
+from app.services.academic_apis.common import APIError, RateLimitError
 
 try:
     papers = await client.search_papers("query")
 except RateLimitError:
-    # Handle rate limiting
+    print("Rate limit exceeded, waiting...")
     await asyncio.sleep(60)
 except APIError as e:
-    # Handle API errors
-    logger.error(f"API error: {e}")
-except InvalidResponseError:
-    # Handle parsing errors
-    logger.warning("Invalid response format")
+    print(f"API error: {e}")
 ```
 
-## 🎯 Best Practices
+## Best Practices
 
-### 1. Use Appropriate Clients
-- **PubMed**: Medical/biological research
-- **arXiv**: Latest preprints in STEM
-- **Semantic Scholar**: Citation analysis
-- **Crossref**: DOI resolution and metadata
-- **Google Scholar**: Broad academic search
+1. **Use async context managers** to ensure proper cleanup
+2. **Implement exponential backoff** for rate limit handling
+3. **Cache responses** when making repeated requests
+4. **Respect API rate limits** and terms of service
+5. **Normalize data** before storing or processing
+6. **Handle errors gracefully** with fallback strategies
 
-### 2. Implement Rate Limiting
-```python
-# Built-in rate limiting
-async with SemanticScholarClient() as client:
-    papers = await client.search_papers("query")
+## Testing
+
+Run the test suite:
+
+```bash
+pytest tests/academic_apis/ -v
 ```
 
-### 3. Cache Results
-```python
-# Caching is built-in, but you can disable it
-papers = await client.search_papers("query", use_cache=False)
+For integration tests with real APIs:
+
+```bash
+pytest tests/academic_apis/ -v --integration
 ```
 
-### 4. Handle Async Operations
-```python
-# Use async context managers
-async with PubMedClient(api_key="key") as client:
-    papers = await client.search_papers("query")
-    # Client automatically closes
-```
+## Contributing
 
-## 🔄 Migration from Old Structure
+When adding new academic sources:
 
-The refactoring maintains backward compatibility:
+1. Create a new client class extending `BaseAcademicClient`
+2. Implement all required abstract methods
+3. Add source-specific normalization in `normalizers.py`
+4. Create comprehensive tests
+5. Update documentation
 
-```python
-# Old way (still works)
-from app.services.academic_apis import SemanticScholarClient
-
-# New way (recommended)
-from app.services.academic_apis.clients import SemanticScholarClient
-from app.services.academic_apis.common import PaperNormalizer
-```
-
-## 🧪 Testing
-
-Each client can be tested independently:
-
-```python
-import pytest
-from app.services.academic_apis.clients import SemanticScholarClient
-
-@pytest.mark.asyncio
-async def test_semantic_scholar_search():
-    client = SemanticScholarClient()
-    papers = await client.search_papers("machine learning", limit=5)
-    assert len(papers) <= 5
-    assert all("title" in paper for paper in papers)
-```
-
-## 📈 Performance Considerations
-
-- **Parallel requests**: Use `asyncio.gather()` for multiple APIs
-- **Batch processing**: Use client batch methods when available
-- **Caching**: Enable caching for repeated queries
-- **Rate limiting**: Respect API limits to avoid blocking
-
-## 🤝 Contributing
-
-When adding new APIs:
-
-1. Extend `BaseAcademicClient`
-2. Implement required abstract methods
-3. Add appropriate parser in `parsers/`
-4. Update `PaperNormalizer` for source-specific fields
-5. Add comprehensive tests
-
-## 📝 Version History
-
-- **v2.0.0**: Major refactoring with modular structure
-- **v1.x**: Original monolithic implementation 
+See existing clients for implementation patterns and best practices. 
