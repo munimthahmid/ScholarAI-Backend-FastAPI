@@ -216,4 +216,216 @@ class XMLParser:
             if keyword_elem.text:
                 keywords.append(keyword_elem.text)
         
-        return keywords 
+        return keywords
+
+    @staticmethod
+    def parse_dblp_paper(paper_info: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Parse DBLP paper info (from JSON API) to standardized format.
+        
+        Args:
+            paper_info: DBLP paper info dictionary
+            
+        Returns:
+            Standardized paper dictionary
+        """
+        result = {}
+        
+        # Basic fields
+        if "title" in paper_info:
+            result["title"] = paper_info["title"]
+        
+        # Extract authors
+        if "authors" in paper_info:
+            result["authors"] = XMLParser._extract_dblp_authors(paper_info["authors"])
+        
+        # Extract venue
+        if "venue" in paper_info:
+            result["venueName"] = paper_info["venue"]
+        
+        # Extract publication year
+        if "year" in paper_info:
+            result["publicationDate"] = f"{paper_info['year']}-01-01"
+        
+        # Extract type
+        if "type" in paper_info:
+            result["type"] = paper_info["type"]
+        
+        # Extract pages
+        if "pages" in paper_info:
+            result["pages"] = paper_info["pages"]
+        
+        # Extract volume/number
+        if "volume" in paper_info:
+            result["volume"] = paper_info["volume"]
+        if "number" in paper_info:
+            result["issue"] = paper_info["number"]
+        
+        # Extract DOI if available
+        if "doi" in paper_info:
+            result["doi"] = paper_info["doi"]
+        
+        # Extract DBLP key/URL
+        if "key" in paper_info:
+            result["dblpKey"] = paper_info["key"]
+        if "url" in paper_info:
+            result["paperUrl"] = paper_info["url"]
+        
+        # Extract publisher
+        if "publisher" in paper_info:
+            result["publisher"] = paper_info["publisher"]
+        
+        # Extract ISBN
+        if "isbn" in paper_info:
+            result["isbn"] = paper_info["isbn"]
+        
+        return result
+    
+    @staticmethod
+    def _extract_dblp_authors(authors_data) -> List[Dict[str, Any]]:
+        """Extract author information from DBLP data."""
+        authors = []
+        
+        if isinstance(authors_data, dict) and "author" in authors_data:
+            author_list = authors_data["author"]
+            if isinstance(author_list, list):
+                for author in author_list:
+                    if isinstance(author, dict):
+                        author_info = {
+                            "name": author.get("text", author.get("@pid", "")),
+                            "authorId": author.get("@pid"),
+                            "orcid": author.get("@orcid"),
+                            "affiliation": None,
+                            "gsProfileUrl": None,
+                        }
+                    elif isinstance(author, str):
+                        author_info = {
+                            "name": author,
+                            "authorId": None,
+                            "orcid": None,
+                            "affiliation": None,
+                            "gsProfileUrl": None,
+                        }
+                    else:
+                        continue
+                    
+                    if author_info["name"]:
+                        authors.append(author_info)
+            elif isinstance(author_list, str):
+                authors.append({
+                    "name": author_list,
+                    "authorId": None,
+                    "orcid": None,
+                    "affiliation": None,
+                    "gsProfileUrl": None,
+                })
+        elif isinstance(authors_data, list):
+            for author in authors_data:
+                if isinstance(author, str):
+                    authors.append({
+                        "name": author,
+                        "authorId": None,
+                        "orcid": None,
+                        "affiliation": None,
+                        "gsProfileUrl": None,
+                    })
+        elif isinstance(authors_data, str):
+            authors.append({
+                "name": authors_data,
+                "authorId": None,
+                "orcid": None,
+                "affiliation": None,
+                "gsProfileUrl": None,
+            })
+        
+        return authors
+
+    @staticmethod
+    def parse_dblp_xml_element(element: ET.Element) -> Dict[str, Any]:
+        """
+        Parse DBLP XML element to dictionary format.
+        
+        Args:
+            element: XML element representing a DBLP publication
+            
+        Returns:
+            Dictionary with publication data
+        """
+        result = {}
+        
+        # Extract title
+        title_elem = element.find("title")
+        if title_elem is not None:
+            result["title"] = title_elem.text
+        
+        # Extract authors
+        authors = []
+        for author_elem in element.findall("author"):
+            if author_elem.text:
+                author_info = {
+                    "name": author_elem.text,
+                    "authorId": author_elem.get("pid"),
+                    "orcid": author_elem.get("orcid"),
+                    "affiliation": None,
+                    "gsProfileUrl": None,
+                }
+                authors.append(author_info)
+        result["authors"] = authors
+        
+        # Extract venue based on publication type
+        if element.tag == "article":
+            journal_elem = element.find("journal")
+            if journal_elem is not None:
+                result["venueName"] = journal_elem.text
+        elif element.tag == "inproceedings":
+            booktitle_elem = element.find("booktitle")
+            if booktitle_elem is not None:
+                result["venueName"] = booktitle_elem.text
+        
+        # Extract year
+        year_elem = element.find("year")
+        if year_elem is not None:
+            result["publicationDate"] = f"{year_elem.text}-01-01"
+        
+        # Extract volume/number
+        volume_elem = element.find("volume")
+        if volume_elem is not None:
+            result["volume"] = volume_elem.text
+        
+        number_elem = element.find("number")
+        if number_elem is not None:
+            result["issue"] = number_elem.text
+        
+        # Extract pages
+        pages_elem = element.find("pages")
+        if pages_elem is not None:
+            result["pages"] = pages_elem.text
+        
+        # Extract DOI
+        doi_elem = element.find("doi")
+        if doi_elem is not None:
+            result["doi"] = doi_elem.text
+        
+        # Extract URL
+        url_elem = element.find("url")
+        if url_elem is not None:
+            result["paperUrl"] = url_elem.text
+        
+        # Extract publisher
+        publisher_elem = element.find("publisher")
+        if publisher_elem is not None:
+            result["publisher"] = publisher_elem.text
+        
+        # Extract ISBN
+        isbn_elem = element.find("isbn")
+        if isbn_elem is not None:
+            result["isbn"] = isbn_elem.text
+        
+        # Set publication type
+        result["type"] = element.tag
+        
+        # Extract DBLP key
+        if "key" in element.attrib:
+            result["dblpKey"] = element.attrib["key"]
+        
+        return result 

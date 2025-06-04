@@ -84,6 +84,22 @@ class BaseAcademicClient(ABC):
             return "arxiv"
         elif "crossref" in class_name:
             return "crossref"
+        elif "openalex" in class_name:
+            return "openalex"
+        elif "core" in class_name:
+            return "core"
+        elif "unpaywall" in class_name:
+            return "unpaywall"
+        elif "europepmc" in class_name:
+            return "europepmc"
+        elif "dblp" in class_name:
+            return "dblp"
+        elif "biorxiv" in class_name:
+            return "biorxiv"
+        elif "doaj" in class_name:
+            return "doaj"
+        elif "base" in class_name:
+            return "base"
         else:
             return "unknown"
 

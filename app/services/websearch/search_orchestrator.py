@@ -12,6 +12,14 @@ from ..academic_apis.clients import (
     ArxivClient,
     CrossrefClient,
     PubMedClient,
+    OpenAlexClient,
+    COREClient,
+    UnpaywallClient,
+    EuropePMCClient,
+    DBLPClient,
+    BioRxivClient,
+    DOAJClient,
+    BASESearchClient,
 )
 
 from .deduplication import PaperDeduplicationService
@@ -38,29 +46,68 @@ class MultiSourceSearchOrchestrator:
         self.filter_service = SearchFilterService(search_config.recent_years_filter)
         self.ai_service: Optional[AIQueryRefinementService] = None
         
-        # Initialize academic API clients
-        self._init_api_clients()
-        
-        # Active sources (Google Scholar removed)
+        # All available sources - define before initializing clients
         self.active_sources = [
             "Semantic Scholar",
             "arXiv",
             "Crossref", 
-            "PubMed"
+            "PubMed",
+            "OpenAlex",
+            "CORE",
+            "Unpaywall",
+            "Europe PMC",
+            "DBLP",
+            "bioRxiv",
+            "DOAJ",
+            "BASE Search"
         ]
+        
+        # Initialize academic API clients (may modify active_sources)
+        self._init_api_clients()
         
         logger.info(f"🎯 \033[96mSearch orchestrator initialized with {len(self.active_sources)} active sources\033[0m")
     
     def _init_api_clients(self):
         """Initialize all academic API clients"""
+        # Initialize clients that don't require API keys
         self.api_clients = {
             "Semantic Scholar": SemanticScholarClient(),
             "arXiv": ArxivClient(),
             "Crossref": CrossrefClient(),
             "PubMed": PubMedClient(),
+            "OpenAlex": OpenAlexClient(),
+            "Europe PMC": EuropePMCClient(),
+            "DBLP": DBLPClient(),
+            "bioRxiv": BioRxivClient(),
+            "DOAJ": DOAJClient(),
+            "BASE Search": BASESearchClient(),
         }
         
-        logger.debug(f"📡 API clients initialized: {list(self.api_clients.keys())}")
+        # Initialize clients that require API keys (only if keys are available)
+        import os
+        
+        # CORE client
+        core_api_key = os.environ.get("CORE_API_KEY")
+        if core_api_key:
+            self.api_clients["CORE"] = COREClient(api_key=core_api_key)
+            logger.info("✅ CORE client initialized with API key")
+        else:
+            logger.warning("⚠️ CORE_API_KEY not found - CORE client will be skipped")
+            if "CORE" in self.active_sources:
+                self.active_sources.remove("CORE")
+        
+        # Unpaywall client
+        unpaywall_email = os.environ.get("UNPAYWALL_EMAIL")
+        if unpaywall_email:
+            self.api_clients["Unpaywall"] = UnpaywallClient(email=unpaywall_email)
+            logger.info("✅ Unpaywall client initialized with email")
+        else:
+            logger.warning("⚠️ UNPAYWALL_EMAIL not found - Unpaywall client will be skipped")
+            if "Unpaywall" in self.active_sources:
+                self.active_sources.remove("Unpaywall")
+        
+        logger.info(f"📡 API clients initialized: {list(self.api_clients.keys())}")
+        logger.info(f"🎯 Active sources after credential check: {len(self.active_sources)}")
     
     def set_ai_service(self, ai_service: AIQueryRefinementService):
         """Set the AI refinement service"""

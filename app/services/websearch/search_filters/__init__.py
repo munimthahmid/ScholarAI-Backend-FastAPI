@@ -7,6 +7,14 @@ from .semantic_scholar import SemanticScholarFilter
 from .arxiv import ArxivFilter
 from .pubmed import PubMedFilter
 from .crossref import CrossrefFilter
+from .openalex import OpenAlexFilter
+from .core import COREFilter
+from .unpaywall import UnpaywallFilter
+from .europepmc import EuropePMCFilter
+from .dblp import DBLPFilter
+from .biorxiv import BioRxivFilter
+from .doaj import DOAJFilter
+from .base_search import BASESearchFilter
 
 # Filter factory for creating source-specific filters
 class FilterFactory:
@@ -18,6 +26,14 @@ class FilterFactory:
         "arXiv": ArxivFilter,
         "PubMed": PubMedFilter,
         "Crossref": CrossrefFilter,
+        "OpenAlex": OpenAlexFilter,
+        "CORE": COREFilter,
+        "Unpaywall": UnpaywallFilter,
+        "Europe PMC": EuropePMCFilter,
+        "DBLP": DBLPFilter,
+        "bioRxiv": BioRxivFilter,
+        "DOAJ": DOAJFilter,
+        "BASE Search": BASESearchFilter,
     }
     
     @classmethod
@@ -82,5 +98,13 @@ __all__ = [
     "ArxivFilter",
     "PubMedFilter",
     "CrossrefFilter",
+    "OpenAlexFilter",
+    "COREFilter",
+    "UnpaywallFilter",
+    "EuropePMCFilter",
+    "DBLPFilter",
+    "BioRxivFilter",
+    "DOAJFilter",
+    "BASESearchFilter",
     "FilterFactory",
 ] 

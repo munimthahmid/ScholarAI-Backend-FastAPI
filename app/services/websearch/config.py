@@ -5,11 +5,13 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 
+import app.core.config # Ensure .env variables are loaded
+
 
 @dataclass
 class SearchConfig:
     """Configuration for paper search operations"""
-    papers_per_source: int = 2
+    papers_per_source: int = 5  # Increased from 2 to better utilize all 13 sources
     max_search_rounds: int = 2
     target_batch_size: int = 10
     enable_ai_refinement: bool = True
@@ -17,7 +19,7 @@ class SearchConfig:
     
     # Rate limiting settings
     retry_on_rate_limit: bool = True
-    max_rate_limit_retries: int = 2
+    max_rate_limit_retries: int = 3  # Increased from 2 for better resilience
     rate_limit_backoff_seconds: int = 30  # Reduced from default 60s
 
 
@@ -67,8 +69,9 @@ class AppConfig:
         config = cls()
         
         # Override search config from env
-        config.search.papers_per_source = int(os.getenv("PAPERS_PER_SOURCE", "2"))
+        config.search.papers_per_source = int(os.getenv("PAPERS_PER_SOURCE", "5"))  # Updated default
         config.search.max_search_rounds = int(os.getenv("MAX_SEARCH_ROUNDS", "2"))
         config.search.enable_ai_refinement = os.getenv("ENABLE_AI_REFINEMENT", "true").lower() == "true"
+        config.search.recent_years_filter = int(os.getenv("RECENT_YEARS_FILTER", "5"))
         
         return config 
