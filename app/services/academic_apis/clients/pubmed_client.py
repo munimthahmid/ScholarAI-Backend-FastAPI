@@ -6,7 +6,9 @@ PubMed is the premier database for biomedical literature maintained by NCBI.
 import logging
 import xml.etree.ElementTree as ET
 from typing import Dict, Any, List, Optional
-from .base_client import BaseAcademicClient
+
+from ..common import BaseAcademicClient
+from ..parsers import XMLParser
 
 logger = logging.getLogger(__name__)
 
@@ -256,16 +258,20 @@ class PubMedClient(BaseAcademicClient):
 
                 root = ET.fromstring(xml_content)
 
-                # Parse each article
+                # Extract paper data from each article
                 for article in root.findall(".//PubmedArticle"):
-                    normalized = self._normalize_paper(article)
-                    if normalized:
-                        all_papers.append(normalized)
+                    try:
+                        paper_data = XMLParser.parse_pubmed_article(article)
+                        normalized_paper = self.normalize_paper(paper_data)
+                        if normalized_paper:
+                            all_papers.append(normalized_paper)
+                    except Exception as e:
+                        logger.warning(f"Error parsing PubMed article: {str(e)}")
 
             except Exception as e:
-                logger.error(f"Error fetching PubMed details for batch: {str(e)}")
-                continue
+                logger.error(f"Error fetching PubMed batch: {str(e)}")
 
+        logger.info(f"Successfully parsed {len(all_papers)} PubMed papers")
         return all_papers
 
     def _build_search_query(
@@ -281,188 +287,30 @@ class PubMedClient(BaseAcademicClient):
         Returns:
             Formatted search query string
         """
-        search_parts = [query] if query else []
+        search_parts = [query]
 
         if filters:
             if "date_range" in filters:
                 date_range = filters["date_range"]
-                if isinstance(date_range, list) and len(date_range) == 2:
-                    search_parts.append(
-                        f'("{date_range[0]}"[Date - Publication] : "{date_range[1]}"[Date - Publication])'
-                    )
+                if "start" in date_range:
+                    search_parts.append(f'("{date_range["start"]}"[Date - Publication] : "3000"[Date - Publication])')
+                if "end" in date_range:
+                    search_parts.append(f'("1900"[Date - Publication] : "{date_range["end"]}"[Date - Publication])')
 
             if "publication_type" in filters:
-                search_parts.append(
-                    f"\"{filters['publication_type']}\"[Publication Type]"
-                )
-
-            if "journal" in filters:
-                search_parts.append(f"\"{filters['journal']}\"[Journal]")
-
-            if "author" in filters:
-                search_parts.append(f"\"{filters['author']}\"[Author]")
+                pub_type = filters["publication_type"]
+                search_parts.append(f'"{pub_type}"[Publication Type]')
 
             if "mesh_terms" in filters:
                 for mesh_term in filters["mesh_terms"]:
-                    search_parts.append(f'"{mesh_term}"[MeSH Terms]')
+                    search_parts.append(f'"{mesh_term}"[Mesh]')
 
-        return " AND ".join(search_parts)
+            if "journal" in filters:
+                journal = filters["journal"]
+                search_parts.append(f'"{journal}"[Journal]')
 
-    def _normalize_paper(self, article_xml: ET.Element) -> Dict[str, Any]:
-        """
-        Normalize PubMed paper data to standard format
+            if "author" in filters:
+                author = filters["author"]
+                search_parts.append(f'"{author}"[Author]')
 
-        Args:
-            article_xml: XML element containing article data
-
-        Returns:
-            Normalized paper dictionary
-        """
-        try:
-            # Extract PMID
-            pmid_elem = article_xml.find(".//PMID")
-            pmid = pmid_elem.text if pmid_elem is not None else None
-
-            # Extract title
-            title_elem = article_xml.find(".//ArticleTitle")
-            title = title_elem.text if title_elem is not None else ""
-
-            # Extract abstract
-            abstract_parts = []
-            for abstract_elem in article_xml.findall(".//AbstractText"):
-                label = abstract_elem.get("Label", "")
-                text = abstract_elem.text or ""
-                if label:
-                    abstract_parts.append(f"{label}: {text}")
-                else:
-                    abstract_parts.append(text)
-            abstract = " ".join(abstract_parts)
-
-            # Extract authors
-            authors = []
-            for author_elem in article_xml.findall(".//Author"):
-                last_name = author_elem.find("LastName")
-                first_name = author_elem.find("ForeName")
-                initials = author_elem.find("Initials")
-
-                name_parts = []
-                if first_name is not None:
-                    name_parts.append(first_name.text)
-                elif initials is not None:
-                    name_parts.append(initials.text)
-
-                if last_name is not None:
-                    name_parts.append(last_name.text)
-
-                name = " ".join(name_parts)
-
-                # Extract affiliation
-                affiliation_elem = author_elem.find(".//Affiliation")
-                affiliation = (
-                    affiliation_elem.text if affiliation_elem is not None else None
-                )
-
-                authors.append(
-                    {
-                        "name": name,
-                        "orcid": None,
-                        "gsProfileUrl": None,
-                        "affiliation": affiliation,
-                    }
-                )
-
-            # Extract journal information
-            journal_elem = article_xml.find(".//Journal")
-            venue_name = ""
-            issn = None
-
-            if journal_elem is not None:
-                title_elem = journal_elem.find("Title")
-                if title_elem is not None:
-                    venue_name = title_elem.text
-
-                issn_elem = journal_elem.find("ISSN")
-                if issn_elem is not None:
-                    issn = issn_elem.text
-
-            # Extract publication date
-            pub_date = None
-            pub_date_elem = article_xml.find(".//PubDate")
-            if pub_date_elem is not None:
-                year_elem = pub_date_elem.find("Year")
-                month_elem = pub_date_elem.find("Month")
-                day_elem = pub_date_elem.find("Day")
-
-                if year_elem is not None:
-                    year = year_elem.text
-                    month = month_elem.text if month_elem is not None else "01"
-                    day = day_elem.text if day_elem is not None else "01"
-
-                    # Convert month name to number if necessary
-                    month_map = {
-                        "Jan": "01",
-                        "Feb": "02",
-                        "Mar": "03",
-                        "Apr": "04",
-                        "May": "05",
-                        "Jun": "06",
-                        "Jul": "07",
-                        "Aug": "08",
-                        "Sep": "09",
-                        "Oct": "10",
-                        "Nov": "11",
-                        "Dec": "12",
-                    }
-                    if month in month_map:
-                        month = month_map[month]
-
-                    try:
-                        pub_date = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
-                    except:
-                        pub_date = f"{year}-01-01"
-
-            # Extract DOI
-            doi = None
-            for article_id in article_xml.findall(".//ArticleId"):
-                if article_id.get("IdType") == "doi":
-                    doi = article_id.text
-                    break
-
-            # Extract MeSH terms
-            mesh_terms = []
-            for mesh_elem in article_xml.findall(".//MeshHeading/DescriptorName"):
-                mesh_terms.append(mesh_elem.text)
-
-            # Extract publication types
-            pub_types = []
-            for pub_type_elem in article_xml.findall(".//PublicationType"):
-                pub_types.append(pub_type_elem.text)
-
-            # Build paper URL
-            paper_url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else None
-
-            normalized = {
-                "title": title,
-                "doi": doi,
-                "publicationDate": pub_date,
-                "venueName": venue_name,
-                "publisher": None,
-                "peerReviewed": True,  # PubMed papers are generally peer-reviewed
-                "authors": authors,
-                "citationCount": 0,  # PubMed doesn't provide citation counts directly
-                "abstract": abstract,
-                "paperUrl": paper_url,
-                "pdfUrl": None,  # PubMed doesn't provide direct PDF links
-                "pdfContent": None,
-                "pmid": pmid,
-                "issn": issn,
-                "meshTerms": mesh_terms,
-                "publicationTypes": pub_types,
-                "source": "pubmed",
-            }
-
-            return normalized
-
-        except Exception as e:
-            logger.error(f"Error normalizing PubMed paper: {str(e)}")
-            return {}
+        return " AND ".join(search_parts) 

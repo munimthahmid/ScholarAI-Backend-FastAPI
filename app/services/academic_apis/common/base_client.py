@@ -6,8 +6,7 @@ rate limiting, and response processing.
 import asyncio
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional, Union
-from datetime import datetime, timedelta
+from typing import Dict, Any, List, Optional
 import httpx
 from tenacity import (
     retry,
@@ -18,19 +17,10 @@ from tenacity import (
 from ratelimit import limits, sleep_and_retry
 import time
 
+from .exceptions import RateLimitError, APIError
+from .normalizers import PaperNormalizer
+
 logger = logging.getLogger(__name__)
-
-
-class RateLimitError(Exception):
-    """Custom exception for rate limit errors"""
-
-    pass
-
-
-class APIError(Exception):
-    """Custom exception for API errors"""
-
-    pass
 
 
 class BaseAcademicClient(ABC):
@@ -41,6 +31,7 @@ class BaseAcademicClient(ABC):
     - Response parsing
     - Caching mechanisms
     - Request standardization
+    - Unified paper normalization
     """
 
     def __init__(
@@ -58,6 +49,9 @@ class BaseAcademicClient(ABC):
         self.timeout = timeout
         self.max_retries = max_retries
         self.api_key = api_key
+        
+        # Set source name based on class name
+        self.source_name = self._get_source_name()
 
         # Initialize HTTP client with proper headers
         self.headers = {
@@ -78,6 +72,22 @@ class BaseAcademicClient(ABC):
         # Cache for responses (simple in-memory cache)
         self._cache = {}
         self._cache_ttl = 3600  # 1 hour TTL
+
+    def _get_source_name(self) -> str:
+        """Get source name from class name."""
+        class_name = self.__class__.__name__.lower()
+        if "semantic" in class_name:
+            return "semantic_scholar"
+        elif "pubmed" in class_name:
+            return "pubmed"
+        elif "arxiv" in class_name:
+            return "arxiv"
+        elif "crossref" in class_name:
+            return "crossref"
+        elif "scholar" in class_name:
+            return "google_scholar"
+        else:
+            return "unknown"
 
     @abstractmethod
     def _get_auth_headers(self) -> Dict[str, str]:
@@ -111,13 +121,37 @@ class BaseAcademicClient(ABC):
     async def get_references(
         self, paper_id: str, limit: int = 50
     ) -> List[Dict[str, Any]]:
-        """Get papers referenced by the given paper"""
+        """Get papers referenced by the given paper"""  
         pass
 
-    @abstractmethod
-    def _normalize_paper(self, raw_paper: Dict[str, Any]) -> Dict[str, Any]:
-        """Normalize paper data to a standard format"""
-        pass
+    def normalize_paper(self, raw_paper: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Normalize paper data using the unified normalizer.
+        
+        Args:
+            raw_paper: Raw paper data from API
+            
+        Returns:
+            Normalized paper dictionary
+        """
+        return PaperNormalizer.normalize(raw_paper, self.source_name)
+
+    def normalize_papers(self, raw_papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Normalize multiple papers.
+        
+        Args:
+            raw_papers: List of raw paper data from API
+            
+        Returns:
+            List of normalized paper dictionaries
+        """
+        normalized_papers = []
+        for paper in raw_papers:
+            normalized = self.normalize_paper(paper)
+            if normalized:
+                normalized_papers.append(normalized)
+        return normalized_papers
 
     @sleep_and_retry
     @limits(calls=100, period=60)  # Default rate limit
@@ -191,71 +225,26 @@ class BaseAcademicClient(ABC):
             logger.error(f"Request error for {url}: {str(e)}")
             raise APIError(f"Request failed: {str(e)}")
 
-    def _extract_doi(self, paper: Dict[str, Any]) -> Optional[str]:
-        """Extract DOI from various possible fields"""
-        doi_fields = ["doi", "DOI", "externalIds.DOI", "identifiers.doi"]
+    async def __aenter__(self):
+        """Async context manager entry"""
+        return self
 
-        for field in doi_fields:
-            if "." in field:
-                # Handle nested fields
-                value = paper
-                for key in field.split("."):
-                    value = value.get(key, {}) if isinstance(value, dict) else None
-                    if value is None:
-                        break
-                if value:
-                    return (
-                        str(value)
-                        .replace("https://doi.org/", "")
-                        .replace("http://dx.doi.org/", "")
-                    )
-            else:
-                value = paper.get(field)
-                if value:
-                    return (
-                        str(value)
-                        .replace("https://doi.org/", "")
-                        .replace("http://dx.doi.org/", "")
-                    )
-
-        return None
-
-    def _extract_date(self, paper: Dict[str, Any]) -> Optional[str]:
-        """Extract publication date from various possible fields"""
-        date_fields = [
-            "publicationDate",
-            "publishedDate",
-            "date",
-            "year",
-            "publicationYear",
-            "published",
-            "datePublished",
-        ]
-
-        for field in date_fields:
-            value = paper.get(field)
-            if value:
-                try:
-                    if isinstance(value, int):
-                        return f"{value}-01-01"
-                    elif isinstance(value, str):
-                        # Try to parse various date formats
-                        from dateutil.parser import parse
-
-                        parsed_date = parse(value)
-                        return parsed_date.strftime("%Y-%m-%d")
-                except Exception:
-                    continue
-
-        return None
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit"""
+        await self.close()
 
     async def close(self):
         """Close the HTTP client"""
-        await self.client.aclose()
+        if hasattr(self, 'client'):
+            await self.client.aclose()
 
     def __del__(self):
-        """Cleanup when object is destroyed"""
-        try:
-            asyncio.create_task(self.close())
-        except Exception:
-            pass
+        """Cleanup on deletion"""
+        if hasattr(self, 'client'):
+            try:
+                import asyncio
+                loop = asyncio.get_event_loop()
+                if not loop.is_closed():
+                    loop.create_task(self.client.aclose())
+            except Exception:
+                pass 
