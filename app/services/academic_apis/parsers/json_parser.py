@@ -279,7 +279,7 @@ class JSONParser:
             result["openAlexId"] = paper["id"]
         
         # Extract DOI
-        if "doi" in paper:
+        if "doi" in paper and paper["doi"]:
             result["doi"] = paper["doi"].replace("https://doi.org/", "")
         
         # Extract authors from authorships
@@ -338,10 +338,11 @@ class JSONParser:
         
         for authorship in authorships:
             author_data = authorship.get("author", {})
+            orcid = author_data.get("orcid")
             author_info = {
                 "name": author_data.get("display_name", ""),
                 "authorId": author_data.get("id"),
-                "orcid": author_data.get("orcid", "").replace("https://orcid.org/", "") if author_data.get("orcid") else None,
+                "orcid": orcid.replace("https://orcid.org/", "") if orcid else None,
                 "affiliation": None,
                 "gsProfileUrl": None,
             }

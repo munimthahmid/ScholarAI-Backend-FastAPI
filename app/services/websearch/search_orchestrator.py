@@ -26,6 +26,8 @@ from .deduplication import PaperDeduplicationService
 from .filter_service import SearchFilterService
 from .ai_refinement import AIQueryRefinementService
 from .config import SearchConfig
+from .metadata_enrichment import PaperMetadataEnrichmentService
+from ..pdf_processor import pdf_processor
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +66,9 @@ class MultiSourceSearchOrchestrator:
         
         # Initialize academic API clients (may modify active_sources)
         self._init_api_clients()
+        
+        # Initialize enrichment service
+        self.enrichment_service = PaperMetadataEnrichmentService(self.api_clients)
         
         logger.info(f"🎯 \033[96mSearch orchestrator initialized with {len(self.active_sources)} active sources\033[0m")
     
@@ -182,6 +187,22 @@ class MultiSourceSearchOrchestrator:
                     break
             
         final_papers = self.deduplication_service.get_papers()[:target_size]
+        
+        # ---- NEW: Enrich missing metadata and rank by relevance ----
+        final_papers = await self.enrichment_service.enrich_papers(final_papers)
+        final_papers = self._rank_papers(final_papers, query_terms)[:target_size]
+        
+        # ---- Enhanced PDF Processing: Upload PDFs to B2 storage with aggressive collection ----
+        try:
+            logger.info("📄 Processing PDFs for B2 storage...")
+            # Use parallel processing for better performance
+            final_papers = await pdf_processor.process_papers_batch_parallel(final_papers, batch_size=8)
+            logger.info("✅ PDF processing completed")
+        except Exception as e:
+            logger.error(f"❌ PDF processing failed: {str(e)}")
+            # Continue without PDF processing
+        # ------------------------------------------------------------
+
         total_duration = time.time() - search_start_time
         logger.info(f"🎉 \033[92mSearch completed in {total_duration:.1f}s: {len(final_papers)} papers collected\033[0m")
         
@@ -407,4 +428,14 @@ class MultiSourceSearchOrchestrator:
         if self.ai_service:
             await self.ai_service.close()
         
-        logger.info("✅ Search orchestrator closed") 
+        logger.info("✅ Search orchestrator closed")
+
+    def _rank_papers(self, papers: List[Dict[str, Any]], query_terms: List[str]) -> List[Dict[str, Any]]:
+        """Rank papers by simple term-frequency relevance score."""
+        if not papers:
+            return papers
+        terms = [t.lower() for t in query_terms]
+        def score(p):
+            text = ((p.get("title") or "") + " " + (p.get("abstract") or "")).lower()
+            return sum(text.count(term) for term in terms)
+        return sorted(papers, key=score, reverse=True) 

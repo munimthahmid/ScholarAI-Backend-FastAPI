@@ -24,7 +24,7 @@ class DOAJClient(BaseAcademicClient):
 
     def __init__(self):
         super().__init__(
-            base_url="https://doaj.org/api/",
+            base_url="https://doaj.org/api",
             rate_limit_calls=60,  # Conservative rate limit
             rate_limit_period=60,
         )
@@ -52,8 +52,11 @@ class DOAJClient(BaseAcademicClient):
         Returns:
             List of normalized paper dictionaries
         """
+        # URL encode the query for the path
+        encoded_query = quote(query)
+        
+        # Build query parameters for pagination and filters
         params = {
-            "q": query,
             "pageSize": min(limit, 100),  # API limit
             "page": (offset // limit) + 1,
         }
@@ -82,12 +85,21 @@ class DOAJClient(BaseAcademicClient):
                 filter_parts.append(f"bibjson.journal.country:\"{filters['country']}\"")
 
             if filter_parts:
-                params["fq"] = " AND ".join(filter_parts)
+                # Combine filters with the main query
+                combined_query = f"({query}) AND ({' AND '.join(filter_parts)})"
+                encoded_query = quote(combined_query)
 
         try:
-            response = await self._make_request("GET", "search/articles", params=params)
-            articles = response.get("results", [])
-
+            # Use the correct DOAJ v4 endpoint: /api/search/articles/{search_query}
+            response = await self._make_request("GET", f"search/articles/{encoded_query}", params=params)
+            
+            # Parse response - check for different possible response structures
+            articles = []
+            if isinstance(response, dict):
+                articles = response.get("results", [])
+            elif isinstance(response, list):
+                articles = response
+            
             logger.info(
                 f"Found {len(articles)} articles from DOAJ for query: {query}"
             )
@@ -173,14 +185,23 @@ class DOAJClient(BaseAcademicClient):
         Returns:
             List of journal dictionaries with metadata
         """
+        # URL encode the query for the path
+        encoded_query = quote(query)
+        
         params = {
-            "q": query,
             "pageSize": min(limit, 100),
         }
 
         try:
-            response = await self._make_request("GET", "search/journals", params=params)
-            journals = response.get("results", [])
+            # Use the correct DOAJ v4 endpoint: /api/search/journals/{search_query}
+            response = await self._make_request("GET", f"search/journals/{encoded_query}", params=params)
+            
+            # Parse response - check for different possible response structures
+            journals = []
+            if isinstance(response, dict):
+                journals = response.get("results", [])
+            elif isinstance(response, list):
+                journals = response
 
             logger.info(f"Found {len(journals)} journals from DOAJ for query: {query}")
 

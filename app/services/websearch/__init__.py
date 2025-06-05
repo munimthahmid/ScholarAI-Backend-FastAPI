@@ -10,6 +10,7 @@ from .deduplication import PaperDeduplicationService
 from .search_orchestrator import MultiSourceSearchOrchestrator
 from .ai_refinement import AIQueryRefinementService
 from .filter_service import SearchFilterService
+from .metadata_enrichment import PaperMetadataEnrichmentService
 
 __all__ = [
     'AppConfig',
@@ -19,5 +20,6 @@ __all__ = [
     'PaperDeduplicationService',
     'MultiSourceSearchOrchestrator',
     'AIQueryRefinementService',
+    'PaperMetadataEnrichmentService',
     'SearchFilterService'
 ] 

@@ -68,7 +68,7 @@ class PaperNormalizer:
             "abstract": abstract,
             "paperUrl": urls["paperUrl"],
             "pdfUrl": urls["pdfUrl"],
-            "pdfContent": None,  # To be filled by content extraction
+            "pdfContentUrl": None,  # To be filled by PDF processing service
             "source": source,
         }
         

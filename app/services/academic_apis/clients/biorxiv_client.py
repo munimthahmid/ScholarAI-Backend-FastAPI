@@ -66,35 +66,56 @@ class BioRxivClient(BaseAcademicClient):
             List of normalized paper dictionaries
         """
         # Get recent papers and filter locally since there's no search API
-        date_from = datetime.now() - timedelta(days=30)  # Last 30 days by default
+        date_from = datetime.now() - timedelta(days=365)  # Last year by default instead of 30 days
         date_to = datetime.now()
         
         if filters and "date_range" in filters:
             date_from = datetime.fromisoformat(filters["date_range"][0])
             date_to = datetime.fromisoformat(filters["date_range"][1])
 
-        params = {
-            "interval": f"{date_from.strftime('%Y-%m-%d')}/{date_to.strftime('%Y-%m-%d')}",
-            "cursor": offset,
-            "format": "json",
-        }
+        # Format interval as YYYY-MM-DD/YYYY-MM-DD as required by API
+        interval = f"{date_from.strftime('%Y-%m-%d')}/{date_to.strftime('%Y-%m-%d')}"
+        cursor = offset
+        format_type = "json"
+        
+        # Build the correct URL path according to bioRxiv/medRxiv API docs:
+        # https://api.biorxiv.org/details/[server]/[interval]/[cursor]/[format]
+        # https://api.medrxiv.org/details/[server]/[interval]/[cursor]/[format]
+        endpoint_path = f"details/{self.server}/{interval}/{cursor}/{format_type}"
+        
+        # Add category filter as query parameter if provided
+        params = {}
+        if filters and "category" in filters:
+            params["category"] = filters["category"]
 
         try:
-            response = await self._make_request("GET", "/details/biorxiv", params=params)
+            response = await self._make_request("GET", endpoint_path, params=params)
+            
             papers = response.get("collection", [])
-
-            # Local filtering by query terms
+            
+            # Local filtering by query terms - use broader matching
             if query:
-                query_lower = query.lower()
+                query_terms = query.lower().split()
                 filtered_papers = []
                 for paper in papers:
                     title = paper.get("title", "").lower()
                     abstract = paper.get("abstract", "").lower()
-                    authors = " ".join([author.get("name", "") for author in paper.get("authors", [])]).lower()
                     
-                    if (query_lower in title or 
-                        query_lower in abstract or 
-                        query_lower in authors):
+                    # Handle authors - can be a string or list
+                    authors_text = ""
+                    authors_data = paper.get("authors", "")
+                    if isinstance(authors_data, str):
+                        authors_text = authors_data.lower()
+                    elif isinstance(authors_data, list):
+                        authors_text = " ".join([
+                            author.get("name", "") if isinstance(author, dict) else str(author) 
+                            for author in authors_data
+                        ]).lower()
+                    
+                    content = f"{title} {abstract} {authors_text}"
+                    
+                    # Check if any query term matches (not all terms required)
+                    if any(term in content for term in query_terms):
                         filtered_papers.append(paper)
                 papers = filtered_papers
 
@@ -138,7 +159,9 @@ class BioRxivClient(BaseAcademicClient):
             doi = f"10.1101/{paper_id}"
 
         try:
-            response = await self._make_request("GET", f"/details/{self.server}/{doi}")
+            # Use correct path format: /details/[server]/[DOI]/na/[format]
+            endpoint_path = f"details/{self.server}/{doi}/na/json"
+            response = await self._make_request("GET", endpoint_path)
 
             if response and response.get("collection"):
                 paper = response["collection"][0]
@@ -199,16 +222,18 @@ class BioRxivClient(BaseAcademicClient):
         date_from = datetime.now() - timedelta(days=days_back)
         date_to = datetime.now()
 
-        params = {
-            "interval": f"{date_from.strftime('%Y-%m-%d')}/{date_to.strftime('%Y-%m-%d')}",
-            "format": "json",
-        }
+        # Format interval and build correct path
+        interval = f"{date_from.strftime('%Y-%m-%d')}/{date_to.strftime('%Y-%m-%d')}"
+        endpoint_path = f"details/{self.server}/{interval}/0/json"
+        
+        # Add category as query parameter
+        params = {"category": category}
 
         try:
-            response = await self._make_request("GET", f"/details/{self.server}", params=params)
+            response = await self._make_request("GET", endpoint_path, params=params)
             papers = response.get("collection", [])
 
-            # Filter by category
+            # Filter by category (additional filtering in case API doesn't handle it properly)
             filtered_papers = [
                 p for p in papers 
                 if category.lower() in p.get("category", "").lower()
@@ -241,13 +266,12 @@ class BioRxivClient(BaseAcademicClient):
         date_from = datetime.now() - timedelta(days=days)
         date_to = datetime.now()
 
-        params = {
-            "interval": f"{date_from.strftime('%Y-%m-%d')}/{date_to.strftime('%Y-%m-%d')}",
-            "format": "json",
-        }
+        # Format interval and build correct path
+        interval = f"{date_from.strftime('%Y-%m-%d')}/{date_to.strftime('%Y-%m-%d')}"
+        endpoint_path = f"details/{self.server}/{interval}/0/json"
 
         try:
-            response = await self._make_request("GET", f"/details/{self.server}", params=params)
+            response = await self._make_request("GET", endpoint_path)
             papers = response.get("collection", [])
 
             parsed_papers = []
@@ -280,7 +304,9 @@ class BioRxivClient(BaseAcademicClient):
             doi = f"10.1101/{paper_id}"
 
         try:
-            response = await self._make_request("GET", f"/details/{self.server}/{doi}")
+            # Use correct path format: /details/[server]/[DOI]/na/[format]
+            endpoint_path = f"details/{self.server}/{doi}/na/json"
+            response = await self._make_request("GET", endpoint_path)
 
             if response and response.get("collection"):
                 versions = response["collection"]
@@ -314,13 +340,12 @@ class BioRxivClient(BaseAcademicClient):
         date_from = datetime.now() - timedelta(days=days_back)
         date_to = datetime.now()
 
-        params = {
-            "interval": f"{date_from.strftime('%Y-%m-%d')}/{date_to.strftime('%Y-%m-%d')}",
-            "format": "json",
-        }
+        # Format interval and build correct path
+        interval = f"{date_from.strftime('%Y-%m-%d')}/{date_to.strftime('%Y-%m-%d')}"
+        endpoint_path = f"details/{self.server}/{interval}/0/json"
 
         try:
-            response = await self._make_request("GET", f"/details/{self.server}", params=params)
+            response = await self._make_request("GET", endpoint_path)
             papers = response.get("collection", [])
 
             # Filter by author name

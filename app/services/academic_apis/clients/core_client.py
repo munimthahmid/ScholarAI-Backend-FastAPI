@@ -5,6 +5,7 @@ CORE aggregates open access research outputs from repositories and journals worl
 
 import logging
 from typing import Dict, Any, List, Optional
+import os
 
 from ..common import BaseAcademicClient
 from ..parsers import JSONParser
@@ -23,19 +24,28 @@ class COREClient(BaseAcademicClient):
     Based on CORE API v3 documentation: https://api.core.ac.uk/docs/v3
     """
 
-    def __init__(self, api_key: str):
-        if not api_key:
-            raise ValueError("CORE API requires an API key")
+    def __init__(self, api_key: Optional[str] = None):
+        resolved_api_key = api_key or os.getenv("CORE_API_KEY")
+        
+        if not resolved_api_key:
+            logger.warning(
+                "COREClient initialized without an API key. Most API calls will likely fail. "
+                "Please provide an API key via constructor or CORE_API_KEY environment variable."
+            )
+            # Allow initialization with None api_key for now; actual calls will fail if key is mandatory
         
         super().__init__(
             base_url="https://api.core.ac.uk/v3",
             rate_limit_calls=100,  # 100 requests per hour for free tier
             rate_limit_period=3600,
-            api_key=api_key,
+            api_key=resolved_api_key,
         )
 
     def _get_auth_headers(self) -> Dict[str, str]:
         """Get CORE API authentication headers"""
+        if not self.api_key:
+            logger.warning("COREClient: API key not available for authenticated request. Returning empty headers.")
+            return {}
         return {"Authorization": f"Bearer {self.api_key}"}
 
     async def search_papers(

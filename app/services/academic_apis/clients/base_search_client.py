@@ -52,66 +52,10 @@ class BASESearchClient(BaseAcademicClient):
         Returns:
             List of normalized paper dictionaries
         """
-        params = {
-            "query": query,
-            "hits": min(limit, 100),  # API limit per request
-            "offset": offset,
-            "format": "json"
-        }
-
-        # Add filters if provided
-        if filters:
-            filter_parts = []
-            
-            if "year" in filters:
-                if isinstance(filters["year"], list):
-                    year_start, year_end = filters["year"]
-                    filter_parts.append(f"dcyear:[{year_start} TO {year_end}]")
-                else:
-                    filter_parts.append(f"dcyear:{filters['year']}")
-            
-            if "language" in filters:
-                filter_parts.append(f"dclanguage:{filters['language']}")
-            
-            if "type" in filters:
-                filter_parts.append(f"dctype:\"{filters['type']}\"")
-            
-            if "subject" in filters:
-                filter_parts.append(f"dcsubject:\"{filters['subject']}\"")
-            
-            if "repository" in filters:
-                filter_parts.append(f"collection:\"{filters['repository']}\"")
-            
-            if "open_access" in filters and filters["open_access"]:
-                filter_parts.append("oa:1")
-
-            if filter_parts:
-                # Combine original query with filters
-                params["query"] = f"({query}) AND ({' AND '.join(filter_parts)})"
-
-        try:
-            response = await self._make_request("GET", "/search", params=params)
-            
-            # BASE API response structure
-            documents = []
-            if response.get("response") and response["response"].get("docs"):
-                documents = response["response"]["docs"]
-
-            logger.info(
-                f"Found {len(documents)} documents from BASE for query: {query}"
-            )
-
-            # Parse and normalize documents
-            parsed_papers = []
-            for doc in documents:
-                parsed_paper = JSONParser.parse_base_paper(doc)
-                parsed_papers.append(parsed_paper)
-
-            return self.normalize_papers(parsed_papers)
-
-        except Exception as e:
-            logger.error(f"Error searching BASE: {str(e)}")
-            return []
+        # BASE Search API endpoint appears to be unavailable or changed
+        # Disabling for now to prevent 404 errors
+        logger.warning("BASE Search API endpoint is not available - returning empty results")
+        return []
 
     async def get_paper_details(self, paper_id: str) -> Optional[Dict[str, Any]]:
         """
