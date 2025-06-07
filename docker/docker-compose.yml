@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  websearch-app:
+    build:
+      context: ..                     # project root
+      dockerfile: docker/Dockerfile   # Dockerfile's relative path
+    ports:
+      - "8000:8000"
+    environment:
+      FASTAPI_HOST: 0.0.0.0
+      FASTAPI_PORT: 8000
+      RABBITMQ_HOST: core-rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-scholar}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-FindSolace@0} # root .env is not loading here so default is being used
+      PYTHONPATH: /app
+    env_file:
+      - ../.env
+    volumes:
+      - ../app:/app/app
+    networks:
+      - scholar_network_alias
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  scholar_network_alias:
+    name: docker_scholar-network
+    external: true

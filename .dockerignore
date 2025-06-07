@@ -1,62 +1,143 @@
-# Git files
+# =============================================================================
+# DOCKER IGNORE CONFIGURATION
+# =============================================================================
+# Optimized to minimize Docker image size and build time
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# VERSION CONTROL
+# -----------------------------------------------------------------------------
 .git
 .gitignore
+.gitattributes
 
-# Docker files
-Dockerfile
-docker-compose.yml
+# -----------------------------------------------------------------------------
+# DOCKER FILES (not needed in container)
+# -----------------------------------------------------------------------------
+Dockerfile*
+docker-compose*.yml
 .dockerignore
 docker.sh
+docker/
 
-# Python virtual environment
-.venv
-venv
-*/.venv
-*/venv
+# -----------------------------------------------------------------------------
+# PYTHON VIRTUAL ENVIRONMENTS
+# -----------------------------------------------------------------------------
+.venv/
+venv/
+*/.venv/
+*/venv/
+.poetry_cache/
 
-# Python cache files
-__pycache__
+# -----------------------------------------------------------------------------
+# PYTHON CACHE AND BUILD FILES
+# -----------------------------------------------------------------------------
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# IDE and editor specific files
+# -----------------------------------------------------------------------------
+# IDE AND EDITOR FILES
+# -----------------------------------------------------------------------------
 .vscode/
 .idea/
 *.sublime-project
 *.sublime-workspace
+*.swp
+*.swo
+*~
 
-# Test files and reports
+# -----------------------------------------------------------------------------
+# TESTING AND COVERAGE
+# -----------------------------------------------------------------------------
 pytest.ini
 .pytest_cache/
 htmlcov/
 .coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+.tox/
+.nox/
 
-# Build artifacts
-dist/
-build/
-*.egg-info/
-
-# Environment files
+# -----------------------------------------------------------------------------
+# ENVIRONMENT FILES
+# -----------------------------------------------------------------------------
 .env
 .env.*
 !.env.example
 
-# OS-specific files
+# -----------------------------------------------------------------------------
+# OPERATING SYSTEM FILES
+# -----------------------------------------------------------------------------
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
-# Logs
+# -----------------------------------------------------------------------------
+# LOGS AND TEMPORARY FILES
+# -----------------------------------------------------------------------------
 *.log
 logs/
-
-# Documentation (if not needed in image)
-# docs/
-
-# Other temporary or local files
 *.tmp
-*.swp
+*.temp
+*.pid
+*.seed
+*.pid.lock
 
-# Poetry cache
-.poetry_cache/
-poetry.lock # Copied separately in Dockerfile, then all copied, can be excluded here if preferred but COPY . . will overwrite if not careful in Dockerfile stages
+# -----------------------------------------------------------------------------
+# DOCUMENTATION (if not needed in production)
+# -----------------------------------------------------------------------------
+docs/
+*.md
+!README.md
+
+# -----------------------------------------------------------------------------
+# DEVELOPMENT AND TOOLING
+# -----------------------------------------------------------------------------
+.pre-commit-config.yaml
+.flake8
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+commands.txt
+
+# -----------------------------------------------------------------------------
+# NODE.JS (if any frontend tools are present)
+# -----------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# -----------------------------------------------------------------------------
+# SCRIPTS AND UTILITIES (development only)
+# -----------------------------------------------------------------------------
+scripts/
+*.sh
+!docker-entrypoint.sh
