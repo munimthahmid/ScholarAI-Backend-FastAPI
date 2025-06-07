@@ -6,7 +6,9 @@ rich citation networks and metadata.
 
 import logging
 from typing import Dict, Any, List, Optional
-from .base_client import BaseAcademicClient
+
+from ..common import BaseAcademicClient
+from ..parsers import JSONParser
 
 logger = logging.getLogger(__name__)
 
@@ -78,14 +80,13 @@ class SemanticScholarClient(BaseAcademicClient):
                 f"Found {len(papers)} papers from Semantic Scholar for query: {query}"
             )
 
-            # Normalize papers to standard format
-            normalized_papers = []
+            # Parse and normalize papers
+            parsed_papers = []
             for paper in papers:
-                normalized = self._normalize_paper(paper)
-                if normalized:
-                    normalized_papers.append(normalized)
+                parsed_paper = JSONParser.parse_semantic_scholar_paper(paper)
+                parsed_papers.append(parsed_paper)
 
-            return normalized_papers
+            return self.normalize_papers(parsed_papers)
 
         except Exception as e:
             logger.error(f"Error searching Semantic Scholar: {str(e)}")
@@ -109,7 +110,8 @@ class SemanticScholarClient(BaseAcademicClient):
             )
 
             if response:
-                return self._normalize_paper(response)
+                parsed_paper = JSONParser.parse_semantic_scholar_paper(response)
+                return self.normalize_paper(parsed_paper)
             return None
 
         except Exception as e:
@@ -141,14 +143,13 @@ class SemanticScholarClient(BaseAcademicClient):
             citations = response.get("data", [])
             logger.info(f"Found {len(citations)} citations for paper {paper_id}")
 
-            normalized_citations = []
+            parsed_citations = []
             for citation in citations:
                 citing_paper = citation.get("citingPaper", {})
-                normalized = self._normalize_paper(citing_paper)
-                if normalized:
-                    normalized_citations.append(normalized)
+                parsed_paper = JSONParser.parse_semantic_scholar_paper(citing_paper)
+                parsed_citations.append(parsed_paper)
 
-            return normalized_citations
+            return self.normalize_papers(parsed_citations)
 
         except Exception as e:
             logger.error(f"Error getting citations from Semantic Scholar: {str(e)}")
@@ -179,14 +180,13 @@ class SemanticScholarClient(BaseAcademicClient):
             references = response.get("data", [])
             logger.info(f"Found {len(references)} references for paper {paper_id}")
 
-            normalized_references = []
+            parsed_references = []
             for reference in references:
                 cited_paper = reference.get("citedPaper", {})
-                normalized = self._normalize_paper(cited_paper)
-                if normalized:
-                    normalized_references.append(normalized)
+                parsed_paper = JSONParser.parse_semantic_scholar_paper(cited_paper)
+                parsed_references.append(parsed_paper)
 
-            return normalized_references
+            return self.normalize_papers(parsed_references)
 
         except Exception as e:
             logger.error(f"Error getting references from Semantic Scholar: {str(e)}")
@@ -217,102 +217,13 @@ class SemanticScholarClient(BaseAcademicClient):
             papers = response.get("data", [])
             logger.info(f"Found {len(papers)} papers for author {author_id}")
 
-            normalized_papers = []
+            parsed_papers = []
             for paper in papers:
-                normalized = self._normalize_paper(paper)
-                if normalized:
-                    normalized_papers.append(normalized)
+                parsed_paper = JSONParser.parse_semantic_scholar_paper(paper)
+                parsed_papers.append(parsed_paper)
 
-            return normalized_papers
+            return self.normalize_papers(parsed_papers)
 
         except Exception as e:
             logger.error(f"Error getting author papers from Semantic Scholar: {str(e)}")
-            return []
-
-    def _normalize_paper(self, raw_paper: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Normalize Semantic Scholar paper data to standard format
-
-        Args:
-            raw_paper: Raw paper data from Semantic Scholar API
-
-        Returns:
-            Normalized paper dictionary
-        """
-        if not raw_paper or not raw_paper.get("title"):
-            return {}
-
-        # Extract DOI
-        doi = None
-        external_ids = raw_paper.get("externalIds", {})
-        if external_ids and "DOI" in external_ids:
-            doi = external_ids["DOI"]
-
-        # Extract authors
-        authors = []
-        for author in raw_paper.get("authors", []):
-            author_info = {
-                "name": author.get("name", ""),
-                "authorId": author.get("authorId"),
-                "orcid": None,
-                "gsProfileUrl": None,
-                "affiliation": None,
-            }
-
-            # Try to extract additional author info if available
-            if "externalIds" in author and author["externalIds"]:
-                if "ORCID" in author["externalIds"]:
-                    author_info["orcid"] = author["externalIds"]["ORCID"]
-
-            authors.append(author_info)
-
-        # Extract venue information
-        venue_name = raw_paper.get("venue") or ""
-        journal = raw_paper.get("journal", {})
-        if journal and not venue_name:
-            venue_name = journal.get("name", "")
-
-        # Extract publication date
-        pub_date = raw_paper.get("publicationDate") or raw_paper.get("year")
-        if isinstance(pub_date, int):
-            pub_date = f"{pub_date}-01-01"
-
-        # Check for PDF availability
-        pdf_url = None
-        pdf_content = None
-        open_access_pdf = raw_paper.get("openAccessPdf")
-        if open_access_pdf and open_access_pdf.get("url"):
-            pdf_url = open_access_pdf["url"]
-
-        # Extract paper URL
-        paper_url = None
-        if external_ids:
-            if "ArXiv" in external_ids:
-                paper_url = f"https://arxiv.org/abs/{external_ids['ArXiv']}"
-            elif "DOI" in external_ids:
-                paper_url = f"https://doi.org/{external_ids['DOI']}"
-
-        normalized = {
-            "title": raw_paper.get("title", ""),
-            "doi": doi,
-            "publicationDate": pub_date,
-            "venueName": venue_name,
-            "publisher": journal.get("publisher") if journal else None,
-            "peerReviewed": True,  # Assume peer-reviewed unless specified otherwise
-            "authors": authors,
-            "citationCount": raw_paper.get("citationCount", 0),
-            "referenceCount": raw_paper.get("referenceCount", 0),
-            "influentialCitationCount": raw_paper.get("influentialCitationCount", 0),
-            "isOpenAccess": raw_paper.get("isOpenAccess", False),
-            "abstract": raw_paper.get("abstract"),
-            "paperUrl": paper_url,
-            "pdfUrl": pdf_url,
-            "pdfContent": pdf_content,
-            "semanticScholarId": raw_paper.get("paperId"),
-            "externalIds": external_ids,
-            "publicationTypes": raw_paper.get("publicationTypes", []),
-            "fieldsOfStudy": raw_paper.get("fieldsOfStudy", []),
-            "source": "semantic_scholar",
-        }
-
-        return normalized
+            return [] 
