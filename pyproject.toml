@@ -3,6 +3,7 @@ name = "scholar-ai"
 version = "0.1.0"
 description = "ScholarAI Backend System with enhanced WebSearch Agent and B2 integration"
 authors = ["ScholarAI Team"]
+packages = [{include = "app"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
