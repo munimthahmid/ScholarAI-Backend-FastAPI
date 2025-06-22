@@ -23,7 +23,19 @@ Backend for the ScholarAI research assistant. This project uses FastAPI and Poet
     poetry install
     ```
 
-3.  **Run the application:**
+3.  **Environment Configuration:**
+    Copy the example environment file and configure it:
+
+    ```bash
+    cp env.example .env
+    ```
+
+    The `.env` file should include (at minimum):
+    ```bash
+    UNPAYWALL_EMAIL=your.email@example.com
+    ```
+
+4.  **Run the application:**
     This command starts the FastAPI development server using Uvicorn. The `--reload` flag enables auto-reloading on code changes.
 
     ```bash
@@ -31,6 +43,28 @@ Backend for the ScholarAI research assistant. This project uses FastAPI and Poet
     ```
 
     You should see output indicating the server is running, typically on `http://127.0.0.1:8000`.
+
+## Academic API Configuration
+
+### Unpaywall
+The Unpaywall API provides open-access status for academic papers. Set up:
+
+```bash
+# Add to your .env file
+UNPAYWALL_EMAIL=your.email@example.com
+```
+
+**Features:**
+- DOI-based paper lookup
+- Open-access status detection
+- PDF URL retrieval
+- Full-text search capabilities
+- Bulk DOI checking
+
+**Test the client:**
+```bash
+poetry run python test_unpaywall.py
+```
 
 ## Project Structure
 

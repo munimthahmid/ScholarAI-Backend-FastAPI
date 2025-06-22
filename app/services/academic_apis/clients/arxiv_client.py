@@ -5,11 +5,12 @@ mathematics, computer science, and related fields.
 """
 
 import logging
-import xml.etree.ElementTree as ET
 from typing import Dict, Any, List, Optional
 from urllib.parse import quote
 import feedparser
-from .base_client import BaseAcademicClient
+
+from ..common import BaseAcademicClient
+from ..parsers import FeedParser
 
 logger = logging.getLogger(__name__)
 
@@ -75,20 +76,13 @@ class ArxivClient(BaseAcademicClient):
             else:
                 feed_content = str(response)
 
-            # Use feedparser to parse the Atom feed
-            feed = feedparser.parse(feed_content)
-            papers = feed.entries
+            # Use feed parser to parse the content
+            papers = FeedParser.parse_feed_content(feed_content)
 
             logger.info(f"Found {len(papers)} papers from arXiv for query: {query}")
 
-            # Normalize papers to standard format
-            normalized_papers = []
-            for paper in papers:
-                normalized = self._normalize_paper(paper)
-                if normalized:
-                    normalized_papers.append(normalized)
-
-            return normalized_papers
+            # Normalize papers using base client
+            return self.normalize_papers(papers)
 
         except Exception as e:
             logger.error(f"Error searching arXiv: {str(e)}")
@@ -118,10 +112,10 @@ class ArxivClient(BaseAcademicClient):
             else:
                 feed_content = str(response)
 
-            feed = feedparser.parse(feed_content)
+            papers = FeedParser.parse_feed_content(feed_content)
 
-            if feed.entries:
-                return self._normalize_paper(feed.entries[0])
+            if papers:
+                return self.normalize_paper(papers[0])
             return None
 
         except Exception as e:
@@ -183,114 +177,6 @@ class ArxivClient(BaseAcademicClient):
 
         return " AND ".join(search_parts) if search_parts else "all:*"
 
-    def _normalize_paper(self, raw_paper: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Normalize arXiv paper data to standard format
-
-        Args:
-            raw_paper: Raw paper data from arXiv API (feedparser entry)
-
-        Returns:
-            Normalized paper dictionary
-        """
-        if not raw_paper or not raw_paper.get("title"):
-            return {}
-
-        # Extract arXiv ID
-        arxiv_id = None
-        paper_url = None
-        pdf_url = None
-
-        if "id" in raw_paper:
-            arxiv_id = raw_paper["id"].split("/")[-1]  # Extract ID from URL
-            paper_url = raw_paper["id"]
-            pdf_url = raw_paper["id"].replace("/abs/", "/pdf/") + ".pdf"
-
-        # Extract DOI if available
-        doi = None
-        if "arxiv_doi" in raw_paper:
-            doi = raw_paper["arxiv_doi"]
-
-        # Extract authors
-        authors = []
-        if "authors" in raw_paper:
-            for author in raw_paper["authors"]:
-                author_name = (
-                    author.get("name", "") if isinstance(author, dict) else str(author)
-                )
-                authors.append(
-                    {
-                        "name": author_name,
-                        "orcid": None,
-                        "gsProfileUrl": None,
-                        "affiliation": None,
-                    }
-                )
-
-        # Extract categories/subjects
-        categories = []
-        if "tags" in raw_paper:
-            for tag in raw_paper["tags"]:
-                if isinstance(tag, dict) and "term" in tag:
-                    categories.append(tag["term"])
-
-        # Extract publication date
-        pub_date = None
-        if "published" in raw_paper:
-            try:
-                from dateutil.parser import parse
-
-                parsed_date = parse(raw_paper["published"])
-                pub_date = parsed_date.strftime("%Y-%m-%d")
-            except Exception:
-                pass
-
-        # Extract updated date
-        updated_date = None
-        if "updated" in raw_paper:
-            try:
-                from dateutil.parser import parse
-
-                parsed_date = parse(raw_paper["updated"])
-                updated_date = parsed_date.strftime("%Y-%m-%d")
-            except Exception:
-                pass
-
-        # Extract abstract
-        abstract = raw_paper.get("summary", "").strip()
-
-        # Extract version information
-        version = None
-        if "arxiv_comment" in raw_paper:
-            comment = raw_paper["arxiv_comment"]
-            if "v" in comment:
-                version = comment
-
-        normalized = {
-            "title": raw_paper.get("title", "").strip(),
-            "doi": doi,
-            "publicationDate": pub_date,
-            "updatedDate": updated_date,
-            "venueName": "arXiv",
-            "publisher": "arXiv",
-            "peerReviewed": False,  # arXiv papers are preprints
-            "authors": authors,
-            "citationCount": 0,  # arXiv doesn't provide citation counts
-            "abstract": abstract,
-            "paperUrl": paper_url,
-            "pdfUrl": pdf_url,
-            "pdfContent": None,  # Could be downloaded separately
-            "arxivId": arxiv_id,
-            "categories": categories,
-            "version": version,
-            "comment": raw_paper.get("arxiv_comment"),
-            "journalRef": raw_paper.get("arxiv_journal_ref"),
-            "source": "arxiv",
-            "isPreprint": True,
-        }
-
-        return normalized
-
     async def download_pdf(self, arxiv_id: str) -> Optional[bytes]:
         """
         Download PDF content for an arXiv paper
@@ -299,40 +185,34 @@ class ArxivClient(BaseAcademicClient):
             arxiv_id: arXiv ID
 
         Returns:
-            PDF content as bytes or None if download fails
+            PDF content as bytes or None if not available
         """
-        pdf_url = f"https://arxiv.org/pdf/{arxiv_id}.pdf"
+        # Clean the arXiv ID
+        clean_id = arxiv_id.replace("arXiv:", "").replace("https://arxiv.org/abs/", "")
+        pdf_url = f"https://arxiv.org/pdf/{clean_id}.pdf"
 
         try:
-            response = await self.client.get(pdf_url)
-            response.raise_for_status()
-
-            logger.info(f"Downloaded PDF for arXiv:{arxiv_id}")
-            return response.content
+            import httpx
+            async with httpx.AsyncClient() as client:
+                response = await client.get(pdf_url)
+                response.raise_for_status()
+                return response.content
 
         except Exception as e:
-            logger.error(f"Error downloading PDF for arXiv:{arxiv_id}: {str(e)}")
+            logger.error(f"Error downloading arXiv PDF: {str(e)}")
             return None
 
     async def get_paper_versions(self, arxiv_id: str) -> List[Dict[str, Any]]:
         """
-        Get all versions of an arXiv paper
+        Get version history for an arXiv paper
 
         Args:
             arxiv_id: arXiv ID
 
         Returns:
-            List of paper versions with metadata
+            List of version information
         """
-        try:
-            # Get paper details which includes version info
-            paper = await self.get_paper_details(arxiv_id)
-            if paper:
-                # For now, return the current version
-                # This could be enhanced to fetch all versions
-                return [paper]
-            return []
-
-        except Exception as e:
-            logger.error(f"Error getting paper versions for arXiv:{arxiv_id}: {str(e)}")
-            return []
+        # arXiv API doesn't provide version history directly
+        # This would need to be implemented by parsing the paper page
+        logger.info("arXiv version history not available through API")
+        return [] 
