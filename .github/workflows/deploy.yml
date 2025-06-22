@@ -80,31 +80,29 @@ jobs:
     
     - name: Deploy FastAPI Application
       run: |
-        # Clean up any existing FastAPI containers
-        echo "🧹 Cleaning up existing FastAPI containers..."
-        for container in $(az container list --resource-group ${{ env.RESOURCE_GROUP }} --query "[?contains(name, 'fastapi')].name" --output tsv); do
-          echo "Deleting existing container: $container"
-          az container delete --resource-group ${{ env.RESOURCE_GROUP }} --name $container --yes
+        # Clean up ALL existing FastAPI containers (including old ones)
+        echo "🧹 Cleaning up ALL existing FastAPI containers..."
+        for pattern in "fastapi" "buet-fastapi"; do
+          echo "Looking for FastAPI containers with pattern: $pattern"
+          for container in $(az container list --resource-group ${{ env.RESOURCE_GROUP }} --query "[?contains(name, '$pattern')].name" --output tsv); do
+            if [ ! -z "$container" ]; then
+              echo "Deleting container: $container"
+              az container delete --resource-group ${{ env.RESOURCE_GROUP }} --name $container --yes
+            fi
+          done
         done
         
         # Wait a moment for cleanup
-        sleep 15
+        sleep 20
         
-        # Use timestamp to ensure unique DNS names and coordinate with other services
-        TIMESTAMP=$(date +%s)
+        # Verify cleanup
+        echo "🔍 Verifying FastAPI cleanup..."
+        remaining=$(az container list --resource-group ${{ env.RESOURCE_GROUP }} --query "[?contains(name, 'fastapi')].name" --output tsv | wc -l)
+        echo "Remaining FastAPI containers: $remaining"
         
-        # Discover the latest RabbitMQ and Redis services dynamically
-        echo "🔍 Discovering existing services..."
-        RABBITMQ_CONTAINER=$(az container list --resource-group ${{ env.RESOURCE_GROUP }} --query "[?contains(name, 'rabbitmq')].name" --output tsv | head -1)
-        REDIS_CONTAINER=$(az container list --resource-group ${{ env.RESOURCE_GROUP }} --query "[?contains(name, 'redis')].name" --output tsv | head -1)
-        
-        if [ -z "$RABBITMQ_CONTAINER" ] || [ -z "$REDIS_CONTAINER" ]; then
-          echo "❌ Required services not found. Please deploy Spring Boot backend first."
-          exit 1
-        fi
-        
-        RABBITMQ_HOST="${RABBITMQ_CONTAINER}.eastus.azurecontainer.io"
-        REDIS_HOST="${REDIS_CONTAINER}.eastus.azurecontainer.io"
+        # Use consistent service names for stable connections
+        RABBITMQ_HOST="scholarai-buet-rabbitmq.eastus.azurecontainer.io"
+        REDIS_HOST="scholarai-buet-redis.eastus.azurecontainer.io"
         
         echo "📡 Using RabbitMQ: $RABBITMQ_HOST"
         echo "📦 Using Redis: $REDIS_HOST"
@@ -112,12 +110,12 @@ jobs:
         # Create new container
         az container create \
           --resource-group ${{ env.RESOURCE_GROUP }} \
-          --name scholarai-fastapi-${TIMESTAMP} \
+          --name scholarai-buet-fastapi \
           --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
           --registry-login-server ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io \
           --registry-username ${{ secrets.ACR_USERNAME }} \
           --registry-password ${{ secrets.ACR_PASSWORD }} \
-          --dns-name-label scholarai-fastapi-${TIMESTAMP} \
+          --dns-name-label scholarai-buet-fastapi \
           --os-type Linux \
           --ports 8000 \
           --cpu 0.5 \
@@ -137,5 +135,5 @@ jobs:
           --restart-policy Always
         
         echo "FastAPI backend deployed successfully!"
-        echo "🚀 FastAPI: https://scholarai-fastapi-${TIMESTAMP}.eastus.azurecontainer.io:8000"
-        echo "📋 Health: https://scholarai-fastapi-${TIMESTAMP}.eastus.azurecontainer.io:8000/health" 
+        echo "🚀 FastAPI: http://scholarai-buet-fastapi.eastus.azurecontainer.io:8000"
+        echo "📋 Health: http://scholarai-buet-fastapi.eastus.azurecontainer.io:8000/health" 
