@@ -91,42 +91,46 @@ async def test_current_websearch():
 
 
 async def test_individual_sources():
-    """Test individual academic sources to see which ones work"""
+    """Test the search orchestrator to see which sources work"""
 
-    print("\n🔍 Testing Individual Academic Sources")
+    print("\n🔍 Testing Search Orchestrator Sources")
     print("=" * 60)
 
-    agent = WebSearchAgent()
+    from app.services.websearch.search_orchestrator import MultiSourceSearchOrchestrator
+    from app.services.websearch.config import SearchConfig
 
-    # Test each source individually
-    sources = [
-        ("Semantic Scholar", agent.semantic_scholar.search_papers),
-        ("arXiv", agent.arxiv.search_papers),
-        ("Crossref", agent.crossref.search_papers),
-        ("PubMed", agent.pubmed.search_papers),
-        ("Google Scholar", agent.google_scholar.search_papers),
-    ]
+    # Create search orchestrator
+    config = SearchConfig()
+    orchestrator = MultiSourceSearchOrchestrator(config)
 
-    query = "machine learning"
-    limit = 5
+    query_terms = ["machine learning"]
+    domain = "Computer Science"
+    
+    try:
+        print(f"🔍 Testing search orchestrator with query: {query_terms}")
+        print(f"   Active sources: {orchestrator.active_sources}")
+        
+        papers = await orchestrator.search_papers(
+            query_terms=query_terms,
+            domain=domain,
+            target_size=5
+        )
+        
+        if papers:
+            print(f"   ✅ Found {len(papers)} papers total")
+            
+            # Show sources that contributed
+            sources_found = set(paper.get('source', 'Unknown') for paper in papers)
+            for source in sources_found:
+                source_papers = [p for p in papers if p.get('source') == source]
+                print(f"      - {source}: {len(source_papers)} papers")
+        else:
+            print(f"   ⚠️  No papers found")
 
-    for source_name, search_func in sources:
-        try:
-            print(f"🔍 Testing {source_name}...")
-            papers = await search_func(query=query, limit=limit)
-
-            if papers:
-                print(f"   ✅ {source_name}: Found {len(papers)} papers")
-                # Show first paper title
-                if papers[0].get("title"):
-                    print(f"   📄 Sample: {papers[0]['title'][:60]}...")
-            else:
-                print(f"   ⚠️  {source_name}: No papers found")
-
-        except Exception as e:
-            print(f"   ❌ {source_name}: Error - {str(e)}")
-
-    await agent.close()
+    except Exception as e:
+        print(f"   ❌ Error: {str(e)}")
+    finally:
+        await orchestrator.close()
 
 
 if __name__ == "__main__":

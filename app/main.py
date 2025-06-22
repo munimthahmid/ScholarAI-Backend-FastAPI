@@ -4,14 +4,26 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
 from app.core.config import settings
+from app.core.logging_config import configure_logging_from_env
 from app.services.rabbitmq_consumer import consumer
+from app.services.pdf_processor import pdf_processor
 
+# Setup environment-aware logging
+configure_logging_from_env()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifespan - startup and shutdown events"""
     # Startup
     print("🚀 Starting ScholarAI FastAPI Backend...")
+
+    # Initialize B2 storage service
+    try:
+        await pdf_processor.initialize()
+        print("✅ B2 storage service initialized")
+    except Exception as e:
+        print(f"⚠️ B2 storage initialization failed: {str(e)}")
+        print("📄 PDF processing will be disabled")
 
     # Start RabbitMQ consumer as background task
     consumer_task = asyncio.create_task(consumer.start_consuming())
