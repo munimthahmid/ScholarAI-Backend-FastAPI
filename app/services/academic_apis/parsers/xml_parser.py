@@ -32,7 +32,10 @@ class XMLParser:
         # Extract PMC ID
         pmc_elem = article_xml.find(".//ArticleId[@IdType='pmc']")
         if pmc_elem is not None:
-            paper["pmcid"] = pmc_elem.text
+            pmcid = pmc_elem.text
+            paper["pmcid"] = pmcid
+        else:
+            pmcid = None
         
         # Extract DOI
         doi_elem = article_xml.find(".//ArticleId[@IdType='doi']")
@@ -66,6 +69,12 @@ class XMLParser:
         
         # Extract keywords
         paper["keywords"] = XMLParser._extract_keywords(article_xml)
+        
+        # Build URLs
+        if pmid_elem is not None and pmid_elem.text:
+            paper["paperUrl"] = f"https://pubmed.ncbi.nlm.nih.gov/{pmid_elem.text}/"
+        if pmcid:
+            paper["pdfUrl"] = f"https://www.ncbi.nlm.nih.gov/pmc/articles/{pmcid}/pdf"
         
         return paper
     

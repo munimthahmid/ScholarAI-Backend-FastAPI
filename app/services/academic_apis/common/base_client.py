@@ -14,7 +14,7 @@ from tenacity import (
     wait_exponential,
     retry_if_exception_type,
 )
-from ratelimit import limits, sleep_and_retry
+# from ratelimit import limits, sleep_and_retry  # REMOVED: Conflicted with tenacity
 import time
 
 from .exceptions import RateLimitError, APIError
@@ -167,8 +167,6 @@ class BaseAcademicClient(ABC):
                 normalized_papers.append(normalized)
         return normalized_papers
 
-    @sleep_and_retry
-    @limits(calls=100, period=60)  # Default rate limit
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=4, max=10),

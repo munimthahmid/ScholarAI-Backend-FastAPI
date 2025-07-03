@@ -29,13 +29,25 @@ class SemanticScholarClient(BaseAcademicClient):
             rate_limit_calls=100,  # 100 requests per 5 minutes for free tier
             rate_limit_period=300,
             api_key=api_key,
+            timeout=60,  # Increase timeout for potentially slow responses
         )
+
+        # Reduce default fields to essential ones for faster responses
+        self.default_fields = (
+            "paperId,externalIds,title,abstract,venue,year," \
+            "isOpenAccess,openAccessPdf,authors,publicationDate"
+        )
+
+        # Use inherited HTTP client (HTTP/1.1) – avoids extra h2 dependency
 
     def _get_auth_headers(self) -> Dict[str, str]:
         """Get Semantic Scholar API authentication headers"""
+        headers = {
+            "User-Agent": "ScholarAI/1.0 (+https://scholarai.dev)"
+        }
         if self.api_key:
-            return {"x-api-key": self.api_key}
-        return {}
+            headers["x-api-key"] = self.api_key
+        return headers
 
     async def search_papers(
         self,
@@ -60,7 +72,7 @@ class SemanticScholarClient(BaseAcademicClient):
             "query": query,
             "limit": min(limit, 100),  # API limit
             "offset": offset,
-            "fields": "paperId,externalIds,title,abstract,venue,year,referenceCount,citationCount,influentialCitationCount,isOpenAccess,openAccessPdf,authors,publicationTypes,publicationDate,journal",
+            "fields": self.default_fields,
         }
 
         # Add filters if provided
@@ -102,7 +114,7 @@ class SemanticScholarClient(BaseAcademicClient):
         Returns:
             Normalized paper dictionary or None if not found
         """
-        fields = "paperId,externalIds,title,abstract,venue,year,referenceCount,citationCount,influentialCitationCount,isOpenAccess,openAccessPdf,authors,publicationTypes,publicationDate,journal,references,citations"
+        fields = self.default_fields + ",references,citations"
 
         try:
             response = await self._make_request(
@@ -131,7 +143,7 @@ class SemanticScholarClient(BaseAcademicClient):
         Returns:
             List of normalized paper dictionaries
         """
-        fields = "paperId,externalIds,title,abstract,venue,year,referenceCount,citationCount,influentialCitationCount,isOpenAccess,openAccessPdf,authors,publicationTypes,publicationDate,journal"
+        fields = self.default_fields
 
         try:
             response = await self._make_request(
@@ -168,7 +180,7 @@ class SemanticScholarClient(BaseAcademicClient):
         Returns:
             List of normalized paper dictionaries
         """
-        fields = "paperId,externalIds,title,abstract,venue,year,referenceCount,citationCount,influentialCitationCount,isOpenAccess,openAccessPdf,authors,publicationTypes,publicationDate,journal"
+        fields = self.default_fields
 
         try:
             response = await self._make_request(
@@ -205,7 +217,7 @@ class SemanticScholarClient(BaseAcademicClient):
         Returns:
             List of normalized paper dictionaries
         """
-        fields = "paperId,externalIds,title,abstract,venue,year,referenceCount,citationCount,influentialCitationCount,isOpenAccess,openAccessPdf,authors,publicationTypes,publicationDate,journal"
+        fields = self.default_fields
 
         try:
             response = await self._make_request(
