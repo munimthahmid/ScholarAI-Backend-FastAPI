@@ -65,33 +65,31 @@ class DBLPClient(BaseAcademicClient):
         # Add filters if provided
         if filters:
             query_parts = [query]
-            
+
             if "year" in filters:
                 if isinstance(filters["year"], list):
                     year_filter = f"year:{filters['year'][0]}..{filters['year'][1]}"
                 else:
                     year_filter = f"year:{filters['year']}"
                 query_parts.append(year_filter)
-            
+
             if "venue" in filters:
                 query_parts.append(f"venue:{filters['venue']}")
-            
+
             if "type" in filters:
                 # DBLP publication types: article, inproceedings, proceedings, book, incollection, phdthesis, mastersthesis
                 query_parts.append(f"type:{filters['type']}")
-            
+
             params["q"] = " ".join(query_parts)
 
         try:
             response = await self._make_request("GET", "/publ/api", params=params)
-            
+
             result = response.get("result", {})
             hits = result.get("hits", {})
             papers = hits.get("hit", [])
 
-            logger.info(
-                f"Found {len(papers)} papers from DBLP for query: {query}"
-            )
+            logger.info(f"Found {len(papers)} papers from DBLP for query: {query}")
 
             # Parse and normalize papers
             parsed_papers = []
@@ -127,7 +125,7 @@ class DBLPClient(BaseAcademicClient):
             }
 
             response = await self._make_request("GET", "/publ/api", params=params)
-            
+
             result = response.get("result", {})
             hits = result.get("hits", {})
             papers = hits.get("hit", [])
@@ -136,7 +134,7 @@ class DBLPClient(BaseAcademicClient):
                 paper_info = papers[0].get("info", {})
                 parsed_paper = XMLParser.parse_dblp_paper(paper_info)
                 return self.normalize_paper(parsed_paper)
-            
+
             return None
 
         except Exception as e:
@@ -148,7 +146,7 @@ class DBLPClient(BaseAcademicClient):
     ) -> List[Dict[str, Any]]:
         """
         DBLP doesn't provide citation information directly
-        
+
         Args:
             paper_id: DBLP paper key
             limit: Maximum citations
@@ -175,7 +173,9 @@ class DBLPClient(BaseAcademicClient):
         logger.warning("DBLP doesn't provide reference data")
         return []
 
-    async def search_author(self, author_name: str, limit: int = 20) -> List[Dict[str, Any]]:
+    async def search_author(
+        self, author_name: str, limit: int = 20
+    ) -> List[Dict[str, Any]]:
         """
         Search for author information
 
@@ -194,7 +194,7 @@ class DBLPClient(BaseAcademicClient):
 
         try:
             response = await self._make_request("GET", "/author/api", params=params)
-            
+
             result = response.get("result", {})
             hits = result.get("hits", {})
             authors = hits.get("hit", [])
@@ -202,11 +202,13 @@ class DBLPClient(BaseAcademicClient):
             parsed_authors = []
             for author_hit in authors:
                 author_info = author_hit.get("info", {})
-                parsed_authors.append({
-                    "name": author_info.get("author", ""),
-                    "dblp_key": author_info.get("url", ""),
-                    "aliases": author_info.get("aliases", []),
-                })
+                parsed_authors.append(
+                    {
+                        "name": author_info.get("author", ""),
+                        "dblp_key": author_info.get("url", ""),
+                        "aliases": author_info.get("aliases", []),
+                    }
+                )
 
             return parsed_authors
 
@@ -230,22 +232,28 @@ class DBLPClient(BaseAcademicClient):
         try:
             # DBLP author URLs follow pattern: https://dblp.org/pid/xx/yy.xml
             xml_url = f"https://dblp.org/pid/{author_key}.xml"
-            
+
             # Make direct request to author's XML
             response = await self.client.get(xml_url)
             response.raise_for_status()
-            
+
             # Parse XML response
             root = ET.fromstring(response.text)
             publications = []
-            
+
             for pub in root.findall(".//r"):
                 # Extract publication information
                 pub_info = {}
                 for child in pub:
-                    if child.tag in ["article", "inproceedings", "proceedings", "book", "incollection"]:
+                    if child.tag in [
+                        "article",
+                        "inproceedings",
+                        "proceedings",
+                        "book",
+                        "incollection",
+                    ]:
                         pub_info.update(XMLParser.parse_dblp_xml_element(child))
-                
+
                 if pub_info:
                     parsed_paper = XMLParser.parse_dblp_paper(pub_info)
                     publications.append(parsed_paper)
@@ -256,7 +264,9 @@ class DBLPClient(BaseAcademicClient):
             logger.error(f"Error getting author publications from DBLP: {str(e)}")
             return []
 
-    async def search_venue(self, venue_name: str, limit: int = 20) -> List[Dict[str, Any]]:
+    async def search_venue(
+        self, venue_name: str, limit: int = 20
+    ) -> List[Dict[str, Any]]:
         """
         Search for venue information (conferences, journals)
 
@@ -275,7 +285,7 @@ class DBLPClient(BaseAcademicClient):
 
         try:
             response = await self._make_request("GET", "/venue/api", params=params)
-            
+
             result = response.get("result", {})
             hits = result.get("hits", {})
             venues = hits.get("hit", [])
@@ -283,12 +293,14 @@ class DBLPClient(BaseAcademicClient):
             parsed_venues = []
             for venue_hit in venues:
                 venue_info = venue_hit.get("info", {})
-                parsed_venues.append({
-                    "name": venue_info.get("venue", ""),
-                    "dblp_key": venue_info.get("url", ""),
-                    "type": venue_info.get("type", ""),
-                    "acronym": venue_info.get("acronym", ""),
-                })
+                parsed_venues.append(
+                    {
+                        "name": venue_info.get("venue", ""),
+                        "dblp_key": venue_info.get("url", ""),
+                        "type": venue_info.get("type", ""),
+                        "acronym": venue_info.get("acronym", ""),
+                    }
+                )
 
             return parsed_venues
 
@@ -322,7 +334,7 @@ class DBLPClient(BaseAcademicClient):
 
         try:
             response = await self._make_request("GET", "/publ/api", params=params)
-            
+
             result = response.get("result", {})
             hits = result.get("hits", {})
             papers = hits.get("hit", [])
@@ -360,7 +372,7 @@ class DBLPClient(BaseAcademicClient):
 
         try:
             response = await self._make_request("GET", "/publ/api", params=params)
-            
+
             result = response.get("result", {})
             hits = result.get("hits", {})
             papers = hits.get("hit", [])
@@ -375,4 +387,4 @@ class DBLPClient(BaseAcademicClient):
 
         except Exception as e:
             logger.error(f"Error searching by publication type in DBLP: {str(e)}")
-            return [] 
+            return []

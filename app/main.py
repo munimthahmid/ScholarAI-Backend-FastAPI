@@ -11,6 +11,7 @@ from app.services.pdf_processor import pdf_processor
 # Setup environment-aware logging
 configure_logging_from_env()
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifespan - startup and shutdown events"""

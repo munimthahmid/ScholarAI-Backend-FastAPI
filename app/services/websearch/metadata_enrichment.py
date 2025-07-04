@@ -11,6 +11,7 @@ MANDATORY_FIELDS = [
     "publicationDate",
 ]
 
+
 class PaperMetadataEnrichmentService:
     """Enrich papers with missing metadata using existing API clients."""
 
@@ -25,7 +26,9 @@ class PaperMetadataEnrichmentService:
         enriched = []
         for original, result in zip(papers, results):
             if isinstance(result, Exception):
-                logger.debug(f"Enrichment failed for paper '{original.get('title','')[:60]}': {result}")
+                logger.debug(
+                    f"Enrichment failed for paper '{original.get('title','')[:60]}': {result}"
+                )
                 enriched.append(original)
             else:
                 enriched.append(result)
@@ -51,7 +54,9 @@ class PaperMetadataEnrichmentService:
             # arXiv based enrichment
             arxiv_id = paper.get("arxivId") or paper.get("arxiv_id")
             if arxiv_id and "arXiv" in self.api_clients:
-                enriched = await self._safe_call(self.api_clients["arXiv"].get_paper_details, arxiv_id)
+                enriched = await self._safe_call(
+                    self.api_clients["arXiv"].get_paper_details, arxiv_id
+                )
                 if enriched:
                     paper = self._merge(paper, enriched)
                     missing = self._get_missing_fields(paper)
@@ -61,7 +66,9 @@ class PaperMetadataEnrichmentService:
             # Semantic Scholar enrichment using paperId or DOI
             ss_id = paper.get("semanticScholarId") or paper.get("paperId") or doi
             if ss_id and "Semantic Scholar" in self.api_clients:
-                enriched = await self._safe_call(self.api_clients["Semantic Scholar"].get_paper_details, ss_id)
+                enriched = await self._safe_call(
+                    self.api_clients["Semantic Scholar"].get_paper_details, ss_id
+                )
                 if enriched:
                     paper = self._merge(paper, enriched)
                     missing = self._get_missing_fields(paper)
@@ -70,7 +77,13 @@ class PaperMetadataEnrichmentService:
 
             # Fallback: Crossref title search to resolve DOI and metadata
             if "Crossref" in self.api_clients and paper.get("title"):
-                search_res = await self._safe_call(self.api_clients["Crossref"].search_papers, paper["title"], 1, 0, None)
+                search_res = await self._safe_call(
+                    self.api_clients["Crossref"].search_papers,
+                    paper["title"],
+                    1,
+                    0,
+                    None,
+                )
                 if search_res:
                     paper = self._merge(paper, search_res[0])
 
@@ -79,7 +92,9 @@ class PaperMetadataEnrichmentService:
     async def _fetch_from_crossref(self, doi: str) -> Optional[Dict[str, Any]]:
         if "Crossref" not in self.api_clients:
             return None
-        return await self._safe_call(self.api_clients["Crossref"].get_paper_details, doi)
+        return await self._safe_call(
+            self.api_clients["Crossref"].get_paper_details, doi
+        )
 
     @staticmethod
     async def _safe_call(func, *args, **kwargs):
@@ -103,6 +118,10 @@ class PaperMetadataEnrichmentService:
         missing = []
         for field in MANDATORY_FIELDS:
             val = paper.get(field)
-            if val is None or (isinstance(val, str) and not val.strip()) or (isinstance(val, list) and not val):
+            if (
+                val is None
+                or (isinstance(val, str) and not val.strip())
+                or (isinstance(val, list) and not val)
+            ):
                 missing.append(field)
-        return missing 
+        return missing

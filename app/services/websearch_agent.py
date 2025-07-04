@@ -3,7 +3,7 @@
 
 A clean, modular implementation using separate services for different concerns:
 - Configuration management
-- Paper deduplication  
+- Paper deduplication
 - Search filtering
 - AI-powered query refinement
 - Multi-source orchestration
@@ -18,8 +18,8 @@ from datetime import datetime
 
 from .websearch import (
     AppConfig,
-    AIQueryRefinementService, 
-    MultiSourceSearchOrchestrator
+    AIQueryRefinementService,
+    MultiSourceSearchOrchestrator,
 )
 
 logger = logging.getLogger(__name__)
@@ -39,22 +39,21 @@ class WebSearchAgent:
 
         # Initialize search orchestrator
         self.orchestrator = MultiSourceSearchOrchestrator(self.config.search)
-        
+
         # Initialize AI service if enabled
         self.ai_service = None
         if self.config.search.enable_ai_refinement:
             self.ai_service = AIQueryRefinementService(
-                api_key=self.config.ai.api_key,
-                model_name=self.config.ai.model_name
+                api_key=self.config.ai.api_key, model_name=self.config.ai.model_name
             )
             self.orchestrator.set_ai_service(self.ai_service)
-        
+
         logger.info("🤖 WebSearchAgent ready")
 
     async def process_request(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         🎯 Main entry point for multi-source paper fetching.
-        
+
         Maintains backward compatibility with the original interface.
         """
         # Extract request parameters
@@ -64,7 +63,9 @@ class WebSearchAgent:
         batch_size = request_data.get("batchSize", 10)
         correlation_id = request_data.get("correlationId")
 
-        logger.info(f"🔍 Searching papers for project {project_id}: {', '.join(query_terms)} (target: {batch_size})")
+        logger.info(
+            f"🔍 Searching papers for project {project_id}: {', '.join(query_terms)} (target: {batch_size})"
+        )
 
         # Initialize AI service if needed
         if self.ai_service and not self.ai_service.is_ready():
@@ -72,14 +73,12 @@ class WebSearchAgent:
 
         # Execute the search
         papers = await self.orchestrator.search_papers(
-            query_terms=query_terms,
-            domain=domain,
-            target_size=batch_size
+            query_terms=query_terms, domain=domain, target_size=batch_size
         )
 
         # Get search statistics
         search_stats = self.orchestrator.get_search_stats()
-        
+
         # Build response (maintaining backward compatibility)
         result = {
             "projectId": project_id,
@@ -95,8 +94,8 @@ class WebSearchAgent:
             "searchRounds": self.config.search.max_search_rounds,
             "deduplicationStats": {
                 "unique_papers": search_stats["unique_papers"],
-                "total_identifiers": search_stats["total_identifiers"]
-            }
+                "total_identifiers": search_stats["total_identifiers"],
+            },
         }
 
         logger.info(f"✅ Found {len(papers)} papers for project {project_id}")
@@ -105,29 +104,31 @@ class WebSearchAgent:
     async def close(self):
         """🔒 Clean up all resources"""
         logger.info("🔒 Closing WebSearchAgent...")
-        
+
         if self.orchestrator:
             await self.orchestrator.close()
-        
+
         logger.info("✅ WebSearchAgent closed")
-    
+
     def get_config(self) -> AppConfig:
         """Get current configuration"""
         return self.config
-    
+
     def get_search_stats(self) -> Dict[str, Any]:
         """Get current search statistics"""
         base_stats = self.orchestrator.get_search_stats() if self.orchestrator else {}
-        
+
         return {
             **base_stats,
             "config": {
                 "papers_per_source": self.config.search.papers_per_source,
                 "max_search_rounds": self.config.search.max_search_rounds,
                 "enable_ai_refinement": self.config.search.enable_ai_refinement,
-                "recent_years_filter": self.config.search.recent_years_filter
+                "recent_years_filter": self.config.search.recent_years_filter,
             },
-            "ai_status": self.ai_service.get_status() if self.ai_service else {"ready": False}
+            "ai_status": (
+                self.ai_service.get_status() if self.ai_service else {"ready": False}
+            ),
         }
 
 
@@ -136,6 +137,7 @@ class MultiSourcePaperFetcher(WebSearchAgent):
     """
     🔄 Backward compatibility alias for the old class name
     """
+
     pass
 
 

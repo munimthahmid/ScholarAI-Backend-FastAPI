@@ -105,24 +105,22 @@ async def test_individual_sources():
 
     query_terms = ["machine learning"]
     domain = "Computer Science"
-    
+
     try:
         print(f"🔍 Testing search orchestrator with query: {query_terms}")
         print(f"   Active sources: {orchestrator.active_sources}")
-        
+
         papers = await orchestrator.search_papers(
-            query_terms=query_terms,
-            domain=domain,
-            target_size=5
+            query_terms=query_terms, domain=domain, target_size=5
         )
-        
+
         if papers:
             print(f"   ✅ Found {len(papers)} papers total")
-            
+
             # Show sources that contributed
-            sources_found = set(paper.get('source', 'Unknown') for paper in papers)
+            sources_found = set(paper.get("source", "Unknown") for paper in papers)
             for source in sources_found:
-                source_papers = [p for p in papers if p.get('source') == source]
+                source_papers = [p for p in papers if p.get("source") == source]
                 print(f"      - {source}: {len(source_papers)} papers")
         else:
             print(f"   ⚠️  No papers found")

@@ -226,4 +226,4 @@ class SemanticScholarClient(BaseAcademicClient):
 
         except Exception as e:
             logger.error(f"Error getting author papers from Semantic Scholar: {str(e)}")
-            return [] 
+            return []

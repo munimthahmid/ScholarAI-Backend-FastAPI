@@ -73,15 +73,17 @@ class OpenAlexClient(BaseAcademicClient):
                     filter_parts.append(f"publication_year:{year_range}")
                 else:
                     filter_parts.append(f"publication_year:{filters['year']}")
-            
+
             if "open_access" in filters and filters["open_access"]:
                 filter_parts.append("is_oa:true")
-            
+
             if "type" in filters:
                 filter_parts.append(f"type:{filters['type']}")
-            
+
             if "concept" in filters:
-                filter_parts.append(f"concepts.display_name.search:{quote(filters['concept'])}")
+                filter_parts.append(
+                    f"concepts.display_name.search:{quote(filters['concept'])}"
+                )
 
         if filter_parts:
             params["filter"] = ",".join(filter_parts)
@@ -90,9 +92,7 @@ class OpenAlexClient(BaseAcademicClient):
             response = await self._make_request("GET", "/works", params=params)
             papers = response.get("results", [])
 
-            logger.info(
-                f"Found {len(papers)} papers from OpenAlex for query: {query}"
-            )
+            logger.info(f"Found {len(papers)} papers from OpenAlex for query: {query}")
 
             # Parse and normalize papers
             parsed_papers = []
@@ -122,12 +122,18 @@ class OpenAlexClient(BaseAcademicClient):
             work_id = f"https://doi.org/{paper_id}"
         elif not paper_id.startswith("https://openalex.org/"):
             # Assume it's an OpenAlex ID
-            work_id = f"https://openalex.org/W{paper_id}" if not paper_id.startswith("W") else f"https://openalex.org/{paper_id}"
+            work_id = (
+                f"https://openalex.org/W{paper_id}"
+                if not paper_id.startswith("W")
+                else f"https://openalex.org/{paper_id}"
+            )
         else:
             work_id = paper_id
 
         try:
-            response = await self._make_request("GET", f"/works/{quote(work_id, safe='')}")
+            response = await self._make_request(
+                "GET", f"/works/{quote(work_id, safe='')}"
+            )
 
             if response:
                 parsed_paper = JSONParser.parse_openalex_paper(response)
@@ -155,7 +161,11 @@ class OpenAlexClient(BaseAcademicClient):
         if paper_id.startswith("10."):
             work_id = f"https://doi.org/{paper_id}"
         elif not paper_id.startswith("https://openalex.org/"):
-            work_id = f"https://openalex.org/W{paper_id}" if not paper_id.startswith("W") else f"https://openalex.org/{paper_id}"
+            work_id = (
+                f"https://openalex.org/W{paper_id}"
+                if not paper_id.startswith("W")
+                else f"https://openalex.org/{paper_id}"
+            )
         else:
             work_id = paper_id
 
@@ -167,7 +177,7 @@ class OpenAlexClient(BaseAcademicClient):
         try:
             response = await self._make_request("GET", "/works", params=params)
             citations = response.get("results", [])
-            
+
             logger.info(f"Found {len(citations)} citations for paper {paper_id}")
 
             parsed_citations = []
@@ -200,12 +210,14 @@ class OpenAlexClient(BaseAcademicClient):
             return []
 
         referenced_work_ids = paper_details["referenced_works"][:limit]
-        
+
         if not referenced_work_ids:
             return []
 
         # Build filter for referenced works
-        filter_ids = "|".join([quote(work_id, safe='') for work_id in referenced_work_ids])
+        filter_ids = "|".join(
+            [quote(work_id, safe="") for work_id in referenced_work_ids]
+        )
         params = {
             "filter": f"openalex_id:{filter_ids}",
             "per-page": min(len(referenced_work_ids), 200),
@@ -214,7 +226,7 @@ class OpenAlexClient(BaseAcademicClient):
         try:
             response = await self._make_request("GET", "/works", params=params)
             references = response.get("results", [])
-            
+
             logger.info(f"Found {len(references)} references for paper {paper_id}")
 
             parsed_references = []
@@ -295,4 +307,4 @@ class OpenAlexClient(BaseAcademicClient):
 
         except Exception as e:
             logger.error(f"Error searching by institution in OpenAlex: {str(e)}")
-            return [] 
+            return []

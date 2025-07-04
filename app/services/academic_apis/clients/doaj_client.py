@@ -54,7 +54,7 @@ class DOAJClient(BaseAcademicClient):
         """
         # URL encode the query for the path
         encoded_query = quote(query)
-        
+
         # Build query parameters for pagination and filters
         params = {
             "pageSize": min(limit, 100),  # API limit
@@ -64,23 +64,25 @@ class DOAJClient(BaseAcademicClient):
         # Add filters if provided
         if filters:
             filter_parts = []
-            
+
             if "subject" in filters:
                 filter_parts.append(f"classification.term:\"{filters['subject']}\"")
-            
+
             if "journal" in filters:
                 filter_parts.append(f"bibjson.journal.title:\"{filters['journal']}\"")
-            
+
             if "language" in filters:
-                filter_parts.append(f"bibjson.journal.language:\"{filters['language']}\"")
-            
+                filter_parts.append(
+                    f"bibjson.journal.language:\"{filters['language']}\""
+                )
+
             if "year" in filters:
                 if isinstance(filters["year"], list):
                     year_start, year_end = filters["year"]
                     filter_parts.append(f"bibjson.year:[{year_start} TO {year_end}]")
                 else:
                     filter_parts.append(f"bibjson.year:{filters['year']}")
-            
+
             if "country" in filters:
                 filter_parts.append(f"bibjson.journal.country:\"{filters['country']}\"")
 
@@ -91,18 +93,18 @@ class DOAJClient(BaseAcademicClient):
 
         try:
             # Use the correct DOAJ v4 endpoint: /api/search/articles/{search_query}
-            response = await self._make_request("GET", f"search/articles/{encoded_query}", params=params)
-            
+            response = await self._make_request(
+                "GET", f"search/articles/{encoded_query}", params=params
+            )
+
             # Parse response - check for different possible response structures
             articles = []
             if isinstance(response, dict):
                 articles = response.get("results", [])
             elif isinstance(response, list):
                 articles = response
-            
-            logger.info(
-                f"Found {len(articles)} articles from DOAJ for query: {query}"
-            )
+
+            logger.info(f"Found {len(articles)} articles from DOAJ for query: {query}")
 
             # Parse and normalize articles
             parsed_papers = []
@@ -187,15 +189,17 @@ class DOAJClient(BaseAcademicClient):
         """
         # URL encode the query for the path
         encoded_query = quote(query)
-        
+
         params = {
             "pageSize": min(limit, 100),
         }
 
         try:
             # Use the correct DOAJ v4 endpoint: /api/search/journals/{search_query}
-            response = await self._make_request("GET", f"search/journals/{encoded_query}", params=params)
-            
+            response = await self._make_request(
+                "GET", f"search/journals/{encoded_query}", params=params
+            )
+
             # Parse response - check for different possible response structures
             journals = []
             if isinstance(response, dict):
@@ -230,15 +234,13 @@ class DOAJClient(BaseAcademicClient):
             List of normalized paper dictionaries
         """
         return await self.search_papers(
-            query="*",
-            limit=limit,
-            filters={"subject": subject}
+            query="*", limit=limit, filters={"subject": subject}
         )
 
     def _parse_doaj_journal(self, journal: Dict[str, Any]) -> Dict[str, Any]:
         """Parse DOAJ journal data to standardized format"""
         bibjson = journal.get("bibjson", {})
-        
+
         return {
             "id": journal.get("id"),
             "title": bibjson.get("title", ""),
@@ -249,7 +251,11 @@ class DOAJClient(BaseAcademicClient):
             "subjects": [subj.get("term", "") for subj in bibjson.get("subject", [])],
             "apc": bibjson.get("apc", {}),
             "license": bibjson.get("license", []),
-            "homepage": bibjson.get("link", [{}])[0].get("url", "") if bibjson.get("link") else "",
+            "homepage": (
+                bibjson.get("link", [{}])[0].get("url", "")
+                if bibjson.get("link")
+                else ""
+            ),
             "isOpenAccess": True,  # All DOAJ journals are open access
-            "source": "doaj"
-        } 
+            "source": "doaj",
+        }

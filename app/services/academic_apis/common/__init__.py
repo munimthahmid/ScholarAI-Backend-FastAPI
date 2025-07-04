@@ -19,7 +19,7 @@ from .exceptions import (
 
 __all__ = [
     "BaseAcademicClient",
-    "PaperNormalizer", 
+    "PaperNormalizer",
     "extract_doi",
     "extract_date",
     "clean_title",
@@ -28,4 +28,4 @@ __all__ = [
     "RateLimitError",
     "APIError",
     "InvalidResponseError",
-] 
+]

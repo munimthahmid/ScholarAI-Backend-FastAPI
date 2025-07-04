@@ -193,6 +193,7 @@ class ArxivClient(BaseAcademicClient):
 
         try:
             import httpx
+
             async with httpx.AsyncClient() as client:
                 response = await client.get(pdf_url)
                 response.raise_for_status()
@@ -215,4 +216,4 @@ class ArxivClient(BaseAcademicClient):
         # arXiv API doesn't provide version history directly
         # This would need to be implemented by parsing the paper page
         logger.info("arXiv version history not available through API")
-        return [] 
+        return []

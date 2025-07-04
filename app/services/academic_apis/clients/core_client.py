@@ -20,20 +20,20 @@ class COREClient(BaseAcademicClient):
     - Full-text PDF access and download links
     - Repository and journal metadata
     - Citation and reference networks for OA papers
-    
+
     Based on CORE API v3 documentation: https://api.core.ac.uk/docs/v3
     """
 
     def __init__(self, api_key: Optional[str] = None):
         resolved_api_key = api_key or os.getenv("CORE_API_KEY")
-        
+
         if not resolved_api_key:
             logger.warning(
                 "COREClient initialized without an API key. Most API calls will likely fail. "
                 "Please provide an API key via constructor or CORE_API_KEY environment variable."
             )
             # Allow initialization with None api_key for now; actual calls will fail if key is mandatory
-        
+
         super().__init__(
             base_url="https://api.core.ac.uk/v3",
             rate_limit_calls=100,  # 100 requests per hour for free tier
@@ -44,7 +44,9 @@ class COREClient(BaseAcademicClient):
     def _get_auth_headers(self) -> Dict[str, str]:
         """Get CORE API authentication headers"""
         if not self.api_key:
-            logger.warning("COREClient: API key not available for authenticated request. Returning empty headers.")
+            logger.warning(
+                "COREClient: API key not available for authenticated request. Returning empty headers."
+            )
             return {}
         return {"Authorization": f"Bearer {self.api_key}"}
 
@@ -83,23 +85,23 @@ class COREClient(BaseAcademicClient):
                 else:
                     params["yearFrom"] = filters["year"]
                     params["yearTo"] = filters["year"]
-            
+
             # Language filter
             if "language" in filters:
                 params["language"] = filters["language"]
-            
+
             # Repository filter
             if "repository" in filters:
                 params["repositoryId"] = filters["repository"]
-            
+
             # Full text filter
             if "fulltext" in filters and filters["fulltext"]:
                 params["hasFulltext"] = "true"
-            
+
             # Subject filter
             if "subject" in filters:
                 params["subject"] = filters["subject"]
-            
+
             # Sort filter
             if "sort" in filters:
                 params["sort"] = filters["sort"]
@@ -107,7 +109,7 @@ class COREClient(BaseAcademicClient):
         try:
             # Use the correct endpoint for searching works (add trailing slash)
             response = await self._make_request("GET", "/search/works/", params=params)
-            
+
             # Handle different response structures
             papers = []
             if "results" in response:
@@ -117,7 +119,9 @@ class COREClient(BaseAcademicClient):
             elif isinstance(response, list):
                 papers = response
             else:
-                logger.warning(f"Unexpected CORE response structure: {list(response.keys())}")
+                logger.warning(
+                    f"Unexpected CORE response structure: {list(response.keys())}"
+                )
                 return []
 
             logger.info(f"Found {len(papers)} papers from CORE for query: {query}")
@@ -137,7 +141,7 @@ class COREClient(BaseAcademicClient):
         except Exception as e:
             logger.error(f"Error searching CORE: {str(e)}")
             # Log the full response for debugging
-            if hasattr(e, 'response'):
+            if hasattr(e, "response"):
                 logger.error(f"CORE API response: {e.response}")
             return []
 
@@ -200,10 +204,12 @@ class COREClient(BaseAcademicClient):
                     "q": search_term,
                     "limit": min(limit, 100),
                 }
-                
-                response = await self._make_request("GET", "/search/works/", params=params)
+
+                response = await self._make_request(
+                    "GET", "/search/works/", params=params
+                )
                 results = response.get("results", [])
-                
+
                 for result in results:
                     # Skip the original paper
                     if result.get("id") != paper_id:
@@ -214,7 +220,9 @@ class COREClient(BaseAcademicClient):
                             logger.warning(f"Failed to parse citation paper: {str(e)}")
                             continue
 
-            logger.info(f"Found {len(citations)} potential citations for paper {paper_id}")
+            logger.info(
+                f"Found {len(citations)} potential citations for paper {paper_id}"
+            )
             return self.normalize_papers(citations[:limit])
 
         except Exception as e:
@@ -251,12 +259,12 @@ class COREClient(BaseAcademicClient):
         """
         try:
             response = await self._make_request("GET", f"/works/{paper_id}")
-            
+
             if response:
                 # Check for downloadUrl in the response
                 if "downloadUrl" in response:
                     return response["downloadUrl"]
-                
+
                 # Check for PDF URL in repositories
                 if "repositories" in response:
                     for repo in response["repositories"]:
@@ -264,7 +272,7 @@ class COREClient(BaseAcademicClient):
                             return repo["pdfUrl"]
                         if "fullTextUrl" in repo:
                             return repo["fullTextUrl"]
-            
+
             return None
 
         except Exception as e:
@@ -326,4 +334,4 @@ class COREClient(BaseAcademicClient):
 
         except Exception as e:
             logger.error(f"Error getting repositories from CORE: {str(e)}")
-            return [] 
+            return []

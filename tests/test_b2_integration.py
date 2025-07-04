@@ -40,30 +40,30 @@ async def test_b2_connection():
             "title": "Test Paper for B2 Integration",
             "doi": "10.1000/test.b2.integration",
             "authors": [{"name": "Test Author"}],
-            "abstract": "This is a test paper for B2 integration testing."
+            "abstract": "This is a test paper for B2 integration testing.",
         }
 
         # Create dummy PDF content (make it larger than 1KB for validation)
         dummy_pdf_header = b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n/Contents 4 0 R\n>>\nendobj\n4 0 obj\n<<\n/Length 44\n>>\nstream\nBT\n/F1 12 Tf\n72 720 Td\n(Test PDF for B2 Integration) Tj\nET\nendstream\nendobj\n5 0 obj\n<<\n/Type /Font\n/Subtype /Type1\n/BaseFont /Helvetica\n>>\nendobj\nxref\n0 6\n0000000000 65535 f \n0000000009 00000 n \n0000000074 00000 n \n0000000120 00000 n \n0000000179 00000 n \n0000000364 00000 n \ntrailer\n<<\n/Size 6\n/Root 1 0 R\n>>\nstartxref\n422\n%%EOF"
-        
+
         # Pad the PDF content to ensure it's over 1KB (1024 bytes)
         padding_needed = max(0, 1024 - len(dummy_pdf_header))
         padding = b"% " + b"Padding for test PDF content. " * (padding_needed // 30 + 1)
         dummy_pdf_content = dummy_pdf_header + padding[:padding_needed]
-        
+
         # Upload test PDF
         upload_url = await b2_storage.upload_pdf(dummy_paper, dummy_pdf_content)
         if upload_url:
             print("   ✅ PDF upload successful")
             print(f"   🔗 Download URL: {upload_url[:50]}...")
-            
+
             # Test 4: Check if file exists
             print("\n4️⃣ Testing file existence check...")
             existing_url = await b2_storage.get_pdf_url(dummy_paper)
             if existing_url:
                 print("   ✅ File existence check successful")
                 print(f"   🔗 Retrieved URL: {existing_url[:50]}...")
-                
+
                 # Test 5: Delete test file
                 print("\n5️⃣ Cleaning up test file...")
                 deleted = await b2_storage.delete_pdf(dummy_paper)
@@ -101,16 +101,16 @@ async def test_pdf_processor():
             "doi": "10.1000/sample.paper",
             "pdfUrl": "https://arxiv.org/pdf/2301.00001.pdf",  # Hypothetical URL
             "authors": [{"name": "Sample Author"}],
-            "abstract": "This is a sample paper for testing PDF processing."
+            "abstract": "This is a sample paper for testing PDF processing.",
         }
 
         print("\n2️⃣ Processing sample paper...")
         processed_paper = await pdf_processor.process_paper_pdf(sample_paper)
-        
+
         print(f"   📄 Original PDF URL: {processed_paper.get('pdfUrl', 'None')}")
         print(f"   🔗 B2 PDF URL: {processed_paper.get('pdfContentUrl', 'None')}")
-        
-        if processed_paper.get('pdfContentUrl'):
+
+        if processed_paper.get("pdfContentUrl"):
             print("   ✅ PDF processing successful")
         else:
             print("   ⚠️ PDF processing completed but no B2 URL generated")
@@ -149,4 +149,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

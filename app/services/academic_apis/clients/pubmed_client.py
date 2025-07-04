@@ -293,9 +293,13 @@ class PubMedClient(BaseAcademicClient):
             if "date_range" in filters:
                 date_range = filters["date_range"]
                 if "start" in date_range:
-                    search_parts.append(f'("{date_range["start"]}"[Date - Publication] : "3000"[Date - Publication])')
+                    search_parts.append(
+                        f'("{date_range["start"]}"[Date - Publication] : "3000"[Date - Publication])'
+                    )
                 if "end" in date_range:
-                    search_parts.append(f'("1900"[Date - Publication] : "{date_range["end"]}"[Date - Publication])')
+                    search_parts.append(
+                        f'("1900"[Date - Publication] : "{date_range["end"]}"[Date - Publication])'
+                    )
 
             if "publication_type" in filters:
                 pub_type = filters["publication_type"]
@@ -313,4 +317,4 @@ class PubMedClient(BaseAcademicClient):
                 author = filters["author"]
                 search_parts.append(f'"{author}"[Author]')
 
-        return " AND ".join(search_parts) 
+        return " AND ".join(search_parts)

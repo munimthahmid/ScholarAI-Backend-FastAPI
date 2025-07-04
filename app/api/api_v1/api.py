@@ -10,4 +10,4 @@ api_router.include_router(admin.router, prefix="/admin", tags=["Admin B2 Storage
 # Example:
 # @api_router.get("/example")
 # def example_route():
-#     return {"message": "This is an example route"} 
+#     return {"message": "This is an example route"}

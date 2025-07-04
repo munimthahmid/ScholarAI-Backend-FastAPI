@@ -13,13 +13,13 @@ from .filter_service import SearchFilterService
 from .metadata_enrichment import PaperMetadataEnrichmentService
 
 __all__ = [
-    'AppConfig',
-    'SearchConfig', 
-    'AIConfig',
-    'RabbitMQConfig',
-    'PaperDeduplicationService',
-    'MultiSourceSearchOrchestrator',
-    'AIQueryRefinementService',
-    'PaperMetadataEnrichmentService',
-    'SearchFilterService'
-] 
+    "AppConfig",
+    "SearchConfig",
+    "AIConfig",
+    "RabbitMQConfig",
+    "PaperDeduplicationService",
+    "MultiSourceSearchOrchestrator",
+    "AIQueryRefinementService",
+    "PaperMetadataEnrichmentService",
+    "SearchFilterService",
+]
