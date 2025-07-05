@@ -99,6 +99,22 @@ class RabbitMQConnection:
             # Bind extraction completed queue to exchange
             await self.extraction_completed_queue.bind(self.exchange, "scholarai.extraction.completed")
 
+            # Declare summarization queue
+            self.summarization_queue = await self.channel.declare_queue(
+                "scholarai.summarization.queue", durable=self.config.durable_queues
+            )
+
+            # Bind summarization queue to exchange
+            await self.summarization_queue.bind(self.exchange, "scholarai.summarization")
+
+            # Declare summarization completed queue (for responses)
+            self.summarization_completed_queue = await self.channel.declare_queue(
+                "scholarai.summarization.completed.queue", durable=self.config.durable_queues
+            )
+
+            # Bind summarization completed queue to exchange
+            await self.summarization_completed_queue.bind(self.exchange, "scholarai.summarization.completed")
+
             logger.info("📋 RabbitMQ queues configured")
             return True
 

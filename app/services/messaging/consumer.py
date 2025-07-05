@@ -11,6 +11,7 @@ from aio_pika import IncomingMessage
 from .connection import RabbitMQConnection
 from .handlers import WebSearchMessageHandler, MessageHandlerFactory
 from .handlers_dir.extraction_handler import ExtractionMessageHandler
+from .handlers_dir.summarization_handler import SummarizationMessageHandler
 from ..websearch import AppConfig
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,10 @@ class ScholarAIConsumer:
         # Register extraction handler
         extraction_handler = ExtractionMessageHandler()
         self.handler_factory.register_handler("extraction", extraction_handler)
+
+        # Register summarization handler
+        summarization_handler = SummarizationMessageHandler()
+        self.handler_factory.register_handler("summarization", summarization_handler)
 
         logger.info("📝 Message handlers ready")
 
