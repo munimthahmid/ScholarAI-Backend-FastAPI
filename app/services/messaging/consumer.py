@@ -12,6 +12,7 @@ from .connection import RabbitMQConnection
 from .handlers import WebSearchMessageHandler, MessageHandlerFactory
 from .handlers_dir.extraction_handler import ExtractionMessageHandler
 from .handlers_dir.structuring_handler import StructuringMessageHandler
+from .handlers_dir.summarization_handler import SummarizationMessageHandler
 from ..websearch import AppConfig
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,9 @@ class ScholarAIConsumer:
         # Register structuring handler
         structuring_handler = StructuringMessageHandler()
         self.handler_factory.register_handler("structuring", structuring_handler)
+        # Register summarization handler
+        summarization_handler = SummarizationMessageHandler()
+        self.handler_factory.register_handler("summarization", summarization_handler)
 
         logger.info("📝 Message handlers ready")
 
@@ -99,7 +103,9 @@ class ScholarAIConsumer:
         await extraction_queue.consume(self._process_message)
         await structuring_queue.consume(self._process_message)
 
-        logger.info("📥 Ready to process messages from websearch, extraction, and structuring queues")
+        logger.info(
+            "📥 Ready to process messages from websearch, extraction, and structuring queues"
+        )
 
         self.is_running = True
 
@@ -184,7 +190,9 @@ class ScholarAIConsumer:
 
             if success:
                 # Log appropriately based on result type
-                if "paperId" in result and "extractedText" in result:  # Extraction result
+                if (
+                    "paperId" in result and "extractedText" in result
+                ):  # Extraction result
                     logger.info(
                         f"📤 Sent extraction result: {result.get('paperId')} (status: {result.get('status')})"
                     )

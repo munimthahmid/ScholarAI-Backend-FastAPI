@@ -93,11 +93,14 @@ class RabbitMQConnection:
 
             # Declare extraction completed queue (for responses)
             self.extraction_completed_queue = await self.channel.declare_queue(
-                "scholarai.extraction.completed.queue", durable=self.config.durable_queues
+                "scholarai.extraction.completed.queue",
+                durable=self.config.durable_queues,
             )
 
             # Bind extraction completed queue to exchange
-            await self.extraction_completed_queue.bind(self.exchange, "scholarai.extraction.completed")
+            await self.extraction_completed_queue.bind(
+                self.exchange, "scholarai.extraction.completed"
+            )
 
             # Declare structuring queue
             self.structuring_queue = await self.channel.declare_queue(
@@ -109,13 +112,18 @@ class RabbitMQConnection:
 
             # Declare structuring completed queue (for responses)
             self.structuring_completed_queue = await self.channel.declare_queue(
-                "scholarai.structuring.completed.queue", durable=self.config.durable_queues
+                "scholarai.structuring.completed.queue",
+                durable=self.config.durable_queues,
             )
 
             # Bind structuring completed queue to exchange
-            await self.structuring_completed_queue.bind(self.exchange, "scholarai.structuring.completed")
+            await self.structuring_completed_queue.bind(
+                self.exchange, "scholarai.structuring.completed"
+            )
 
-            logger.info("📋 RabbitMQ queues configured (websearch, extraction, structuring)")
+            logger.info(
+                "📋 RabbitMQ queues configured (websearch, extraction, structuring)"
+            )
             return True
 
         except Exception as e:
