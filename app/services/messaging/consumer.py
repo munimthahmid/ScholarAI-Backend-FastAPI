@@ -11,6 +11,7 @@ from aio_pika import IncomingMessage
 from .connection import RabbitMQConnection
 from .handlers import WebSearchMessageHandler, MessageHandlerFactory
 from .handlers_dir.extraction_handler import ExtractionMessageHandler
+from .handlers_dir.structuring_handler import StructuringMessageHandler
 from ..websearch import AppConfig
 
 logger = logging.getLogger(__name__)
@@ -49,6 +50,10 @@ class ScholarAIConsumer:
         extraction_handler = ExtractionMessageHandler()
         self.handler_factory.register_handler("extraction", extraction_handler)
 
+        # Register structuring handler
+        structuring_handler = StructuringMessageHandler()
+        self.handler_factory.register_handler("structuring", structuring_handler)
+
         logger.info("📝 Message handlers ready")
 
     async def start(self):
@@ -77,20 +82,24 @@ class ScholarAIConsumer:
             raise
 
     async def _start_consuming(self):
-        """Start consuming messages from both websearch and extraction queues"""
+        """Start consuming messages from websearch, extraction, and structuring queues"""
         websearch_queue = self.connection_manager.get_websearch_queue()
         extraction_queue = self.connection_manager.get_extraction_queue()
+        structuring_queue = self.connection_manager.get_structuring_queue()
 
         if not websearch_queue:
             raise RuntimeError("Websearch queue not available")
         if not extraction_queue:
             raise RuntimeError("Extraction queue not available")
+        if not structuring_queue:
+            raise RuntimeError("Structuring queue not available")
 
-        # Start consuming from both queues
+        # Start consuming from all queues
         await websearch_queue.consume(self._process_message)
         await extraction_queue.consume(self._process_message)
+        await structuring_queue.consume(self._process_message)
 
-        logger.info("📥 Ready to process messages from websearch and extraction queues")
+        logger.info("📥 Ready to process messages from websearch, extraction, and structuring queues")
 
         self.is_running = True
 
@@ -146,6 +155,8 @@ class ScholarAIConsumer:
 
         if "extraction" in routing_key:
             return "extraction"
+        elif "structuring" in routing_key:
+            return "structuring"
         elif "websearch" in routing_key:
             return "websearch"
         else:
@@ -173,9 +184,13 @@ class ScholarAIConsumer:
 
             if success:
                 # Log appropriately based on result type
-                if "paperId" in result:  # Extraction result
+                if "paperId" in result and "extractedText" in result:  # Extraction result
                     logger.info(
                         f"📤 Sent extraction result: {result.get('paperId')} (status: {result.get('status')})"
+                    )
+                elif "paperId" in result and "sections" in result:  # Structuring result
+                    logger.info(
+                        f"📤 Sent structuring result: {result.get('paperId')} (status: {result.get('status')}, sections: {result.get('sectionsCount', 0)})"
                     )
                 else:  # WebSearch result
                     project_id = result.get("projectId", "unknown")
@@ -202,6 +217,9 @@ class ScholarAIConsumer:
         # Check if it's an extraction result
         if "paperId" in result and "extractedText" in result:
             return "scholarai.extraction.completed"
+        # Check if it's a structuring result
+        elif "paperId" in result and "sections" in result:
+            return "scholarai.structuring.completed"
         else:
             # Default to websearch response routing key
             return self.config.rabbitmq.routing_key_response

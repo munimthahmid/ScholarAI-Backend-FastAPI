@@ -99,7 +99,23 @@ class RabbitMQConnection:
             # Bind extraction completed queue to exchange
             await self.extraction_completed_queue.bind(self.exchange, "scholarai.extraction.completed")
 
-            logger.info("📋 RabbitMQ queues configured")
+            # Declare structuring queue
+            self.structuring_queue = await self.channel.declare_queue(
+                "scholarai.structuring.queue", durable=self.config.durable_queues
+            )
+
+            # Bind structuring queue to exchange
+            await self.structuring_queue.bind(self.exchange, "scholarai.structuring")
+
+            # Declare structuring completed queue (for responses)
+            self.structuring_completed_queue = await self.channel.declare_queue(
+                "scholarai.structuring.completed.queue", durable=self.config.durable_queues
+            )
+
+            # Bind structuring completed queue to exchange
+            await self.structuring_completed_queue.bind(self.exchange, "scholarai.structuring.completed")
+
+            logger.info("📋 RabbitMQ queues configured (websearch, extraction, structuring)")
             return True
 
         except Exception as e:
@@ -147,6 +163,10 @@ class RabbitMQConnection:
     def get_extraction_queue(self) -> Optional[Queue]:
         """Get the extraction queue for consuming"""
         return self.extraction_queue
+
+    def get_structuring_queue(self) -> Optional[Queue]:
+        """Get the structuring queue for consuming"""
+        return self.structuring_queue
 
     def is_connected(self) -> bool:
         """Check if connection is active"""
