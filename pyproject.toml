@@ -39,6 +39,8 @@ b2sdk = "^2.5.0"
 # Text extraction dependencies
 pytesseract = "^0.3.10"
 Pillow = "^10.0.0"
+# Retry logic
+tenacity = "^8.2.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"

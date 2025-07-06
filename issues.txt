@@ -1,0 +1,10 @@
+# High priority
+1. only arxiv is fully working but citations are mostly 0 and these are arxiv version so low accuracy metadata.
+
+# Medium priority
+1. cross ref, pubmed, openalex, europe pmc, bioarxiv, DOAJ api client doesn't provide direct pdf url and we cannot get the pdf.
+2. Fore core api client everything works except shows invalid pdf structure for pdf viewer.
+
+# Low priority
+1. semantic scholar times out and doesn't work
+2. unpaywall, DBLP, Base mostly no paper found

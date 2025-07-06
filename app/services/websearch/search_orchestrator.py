@@ -51,18 +51,18 @@ class MultiSourceSearchOrchestrator:
 
         # All available sources - define before initializing clients
         self.active_sources = [
-            "Semantic Scholar",
-            "arXiv",
-            "Crossref",
-            "PubMed",
-            "OpenAlex",
-            "CORE",
-            "Unpaywall",
-            "Europe PMC",
-            "DBLP",
-            "bioRxiv",
-            "DOAJ",
-            "BASE Search",
+            # "Semantic Scholar",
+            "arXiv"
+            # "Crossref"
+            # "PubMed",
+            # "OpenAlex"
+            # "CORE",
+            # "Unpaywall",
+            # "Europe PMC",
+            # "DBLP",
+            # "bioRxiv",
+            # "DOAJ",
+            # "BASE Search"
         ]
 
         # Initialize academic API clients (may modify active_sources)
@@ -78,22 +78,23 @@ class MultiSourceSearchOrchestrator:
     def _init_api_clients(self):
         """Initialize all academic API clients"""
         # Initialize clients that don't require API keys
+        import os
+        
+        s2_key = os.environ.get("S2_API_KEY")
         self.api_clients = {
-            "Semantic Scholar": SemanticScholarClient(),
+            # "Semantic Scholar": SemanticScholarClient(api_key=s2_key),
             "arXiv": ArxivClient(),
-            "Crossref": CrossrefClient(),
-            "PubMed": PubMedClient(),
-            "OpenAlex": OpenAlexClient(),
-            "Europe PMC": EuropePMCClient(),
-            "DBLP": DBLPClient(),
-            "bioRxiv": BioRxivClient(),
-            "DOAJ": DOAJClient(),
-            "BASE Search": BASESearchClient(),
+            # "Crossref": CrossrefClient(),
+            # "PubMed": PubMedClient(),
+            # "OpenAlex": OpenAlexClient(),
+            # "Europe PMC": EuropePMCClient(),
+            # "DBLP": DBLPClient(),
+            # "bioRxiv": BioRxivClient(),
+            # "DOAJ": DOAJClient(),
+            # "BASE Search": BASESearchClient(),
         }
 
         # Initialize clients that require API keys (only if keys are available)
-        import os
-
         # CORE client
         core_api_key = os.environ.get("CORE_API_KEY")
         if core_api_key:
@@ -318,18 +319,17 @@ class MultiSourceSearchOrchestrator:
             for attempt in range(self.config.max_rate_limit_retries + 1):
                 try:
                     api_start_time = time.time()
-                    logger.info(
-                        f"📡 \033[96mCalling {source_name} API (attempt {attempt + 1})...\033[0m"
-                    )
-
-                    # Add timeout to detect slow APIs
+                    logger.info(f"📡 \033[96mCalling {source_name} API (attempt {attempt + 1})...\033[0m")
+                    
+                    # Dynamic timeout: Semantic Scholar can be slower
+                    per_call_timeout = 60.0 if source_name.lower() == "semantic scholar" else 30.0
                     papers = await asyncio.wait_for(
                         client.search_papers(
                             query=query,
                             limit=self.config.papers_per_source,
                             filters=filters,
                         ),
-                        timeout=30.0,  # 30 second timeout
+                        timeout=per_call_timeout
                     )
 
                     api_duration = time.time() - api_start_time

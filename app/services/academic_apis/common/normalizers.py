@@ -133,7 +133,8 @@ class PaperNormalizer:
 
     @staticmethod
     def _extract_abstract(raw_paper: Dict[str, Any]) -> Optional[str]:
-        """Extract abstract from paper data."""
+        """Extract abstract from paper data (allow even short abstracts)."""
+        import re
         abstract_fields = ["abstract", "summary", "description"]
 
         for field in abstract_fields:
@@ -141,10 +142,15 @@ class PaperNormalizer:
             if value and isinstance(value, str):
                 # Clean up abstract
                 abstract = value.strip()
-                # Remove common prefixes
+                # Remove common prefixes and HTML tags
+                abstract = re.sub(r'<[^>]+>', '', abstract)  # Strip HTML tags
                 abstract = abstract.replace("Abstract:", "").strip()
-                return abstract if len(abstract) > 10 else None
-
+                # Unescape HTML entities
+                import html
+                abstract = html.unescape(abstract)
+                if len(abstract) >= 1:
+                    return abstract
+        
         return None
 
     @staticmethod

@@ -59,39 +59,82 @@ class B2StorageService:
         Generate a unique filename for the PDF based on paper identifiers.
         Priority: DOI > ArxivID > PubMed ID > Title hash
         """
-        # Try DOI first (most reliable)
-        doi = paper.get("doi") or paper.get("DOI")
-        if doi:
-            # Clean DOI to make it filesystem-safe
-            clean_doi = doi.replace("/", "_").replace(":", "_")
-            return f"doi_{clean_doi}.pdf"
+        try:
+            # Log paper fields for debugging
+            logger.debug(f"Generating filename for paper with fields: {list(paper.keys())}")
+            
+            # Try DOI first (most reliable)
+            doi = paper.get("doi") or paper.get("DOI")
+            if doi and isinstance(doi, str) and doi.strip():
+                # Clean DOI to make it filesystem-safe
+                clean_doi = doi.replace("/", "_").replace(":", "_").replace(" ", "_")
+                return f"doi_{clean_doi}.pdf"
 
-        # Try ArXiv ID
-        arxiv_id = paper.get("arxivId") or paper.get("arxiv_id")
-        if arxiv_id:
-            clean_arxiv = arxiv_id.replace("/", "_").replace(":", "_")
-            return f"arxiv_{clean_arxiv}.pdf"
+            # Try ArXiv ID (multiple possible field names)
+            arxiv_fields = ["arxivId", "arxiv_id", "arXivId", "external_ids.ArXiv", "externalIds.ArXiv"]
+            for field in arxiv_fields:
+                if "." in field:
+                    # Handle nested fields like external_ids.ArXiv
+                    parts = field.split(".")
+                    value = paper
+                    for part in parts:
+                        if isinstance(value, dict):
+                            value = value.get(part)
+                        else:
+                            value = None
+                            break
+                else:
+                    value = paper.get(field)
+                
+                if value and isinstance(value, str) and value.strip():
+                    clean_arxiv = value.replace("/", "_").replace(":", "_").replace(" ", "_")
+                    # Remove common arXiv prefixes
+                    clean_arxiv = clean_arxiv.replace("arXiv:", "").replace("arxiv:", "")
+                    return f"arxiv_{clean_arxiv}.pdf"
 
-        # Try PubMed ID
-        pmid = paper.get("pmid") or paper.get("pubmed_id")
-        if pmid:
-            return f"pmid_{pmid}.pdf"
+            # Extract arXiv ID from paperUrl if available
+            paper_url = paper.get("paperUrl") or paper.get("url")
+            if paper_url and isinstance(paper_url, str) and "arxiv.org" in paper_url:
+                import re
+                match = re.search(r'arxiv\.org/abs/([^/?]+)', paper_url)
+                if match:
+                    arxiv_id = match.group(1)
+                    clean_arxiv = arxiv_id.replace("/", "_").replace(":", "_").replace(" ", "_")
+                    return f"arxiv_{clean_arxiv}.pdf"
 
-        # Try Semantic Scholar ID
-        ss_id = paper.get("semanticScholarId") or paper.get("paperId")
-        if ss_id:
-            return f"ss_{ss_id}.pdf"
+            # Try PubMed ID
+            pmid_fields = ["pmid", "pubmed_id", "PMID"]
+            for field in pmid_fields:
+                pmid = paper.get(field)
+                if pmid and str(pmid).strip():
+                    return f"pmid_{pmid}.pdf"
 
-        # Fallback to title hash
-        title = paper.get("title", "")
-        if title:
-            title_hash = hashlib.md5(title.encode()).hexdigest()
-            return f"title_{title_hash}.pdf"
+            # Try Semantic Scholar ID
+            ss_fields = ["semanticScholarId", "paperId", "ss_id"]
+            for field in ss_fields:
+                ss_id = paper.get(field)
+                if ss_id and isinstance(ss_id, str) and ss_id.strip():
+                    clean_ss = ss_id.replace("/", "_").replace(":", "_").replace(" ", "_")
+                    return f"ss_{clean_ss}.pdf"
 
-        # Last resort: random hash
-        import uuid
+            # Fallback to title hash
+            title = paper.get("title", "")
+            if title and isinstance(title, str) and title.strip():
+                title_hash = hashlib.md5(title.encode()).hexdigest()
+                return f"title_{title_hash}.pdf"
 
-        return f"unknown_{uuid.uuid4().hex}.pdf"
+            # Last resort: random hash
+            import uuid
+            random_name = f"unknown_{uuid.uuid4().hex}.pdf"
+            logger.warning(f"No identifiers found for paper, using random name: {random_name}")
+            return random_name
+            
+        except Exception as e:
+            logger.error(f"Error generating filename: {str(e)}")
+            # Generate a safe fallback name
+            import uuid
+            fallback_name = f"error_{uuid.uuid4().hex}.pdf"
+            return fallback_name
 
     async def upload_pdf(
         self, paper: Dict[str, Any], pdf_content: bytes
@@ -109,8 +152,12 @@ class B2StorageService:
         self._ensure_authorized()
 
         try:
+            # Debug logging
+            logger.debug(f"Uploading PDF for paper: {paper.get('title', 'Unknown')[:50]}")
+            
             file_name = self._generate_file_name(paper)
-
+            logger.debug(f"Generated filename: {file_name}")
+            
             # Check if file already exists
             existing_url = await self.get_pdf_url(paper)
             if existing_url:
@@ -124,21 +171,37 @@ class B2StorageService:
                 logger.warning(f"Invalid PDF content for {file_name}")
                 return None
 
+            # Prepare metadata safely
+            paper_title = paper.get("title", "")
+            if paper_title and isinstance(paper_title, str):
+                paper_title = paper_title[:250]  # B2 has limits on metadata
+            else:
+                paper_title = ""
+                
+            paper_doi = paper.get("doi", "")
+            if paper_doi and isinstance(paper_doi, str):
+                paper_doi = paper_doi[:250]
+            else:
+                paper_doi = ""
+
             # Upload the file
+            logger.debug(f"Starting B2 upload for {file_name}")
             file_info = self.bucket.upload_bytes(
                 pdf_content,
                 file_name,
                 content_type="application/pdf",
                 file_infos={
-                    "paper_title": paper.get("title", "")[
-                        :250
-                    ],  # B2 has limits on metadata
-                    "paper_doi": paper.get("doi", "")[:250],
-                    "upload_source": "scholar_ai",
-                },
+                    "paper_title": paper_title,
+                    "paper_doi": paper_doi,
+                    "upload_source": "scholar_ai"
+                }
             )
 
             # Generate download URL
+            if not file_info or not hasattr(file_info, 'id_'):
+                logger.error(f"Invalid file_info object returned from B2 upload")
+                return None
+                
             download_url = self.api.get_download_url_for_fileid(file_info.id_)
             logger.info(f"Successfully uploaded PDF: {file_name} -> {download_url}")
 
@@ -146,6 +209,7 @@ class B2StorageService:
 
         except Exception as e:
             logger.error(f"Failed to upload PDF: {str(e)}")
+            logger.error(f"Paper data keys: {list(paper.keys()) if isinstance(paper, dict) else 'Not a dict'}")
             return None
 
     async def get_pdf_url(self, paper: Dict[str, Any]) -> Optional[str]:

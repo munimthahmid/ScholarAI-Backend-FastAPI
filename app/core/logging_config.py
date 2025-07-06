@@ -50,7 +50,16 @@ def setup_logging(level: str = "INFO"):
     # Suppress noisy third-party loggers
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+    
+    # Set specific logger levels
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
 
+    # Enable debug logging for B2 storage temporarily
+    logging.getLogger("app.services.b2_storage").setLevel(logging.DEBUG)
+    logging.getLogger("app.services.pdf_processor").setLevel(logging.DEBUG)
+    
     print("📋 Logging configured for concise output")
 
 

@@ -26,19 +26,17 @@ class PDFProcessorService:
         """Initialize the B2 storage service."""
         await self.b2_service.initialize()
 
-    async def process_paper_pdf(
-        self, paper: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    async def process_paper_pdf(self, paper: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process a paper's PDF content and upload to B2 storage.
         Updates the paper dictionary with pdfContentUrl instead of pdfContent.
-        If PDF upload fails, returns None (paper will be discarded).
-
+        If PDF upload fails, returns the paper without pdfContentUrl (paper will not be discarded).
+        
         Args:
             paper: Paper metadata dictionary
 
         Returns:
-            Updated paper dictionary with pdfContentUrl or None if PDF upload failed
+            Updated paper dictionary with pdfContentUrl if successful, or original paper if failed
         """
         try:
             # First check if PDF already exists in B2
@@ -55,10 +53,10 @@ class PDFProcessorService:
             pdf_content = await self.pdf_collector.collect_pdf(paper)
 
             if not pdf_content:
-                logger.warning(
-                    f"❌ Failed to collect PDF for paper: {paper.get('title', 'Unknown')[:50]}"
-                )
-                return None  # Discard paper if no PDF could be collected
+                logger.warning(f"❌ Failed to collect PDF for paper: {paper.get('title', 'Unknown')[:50]}")
+                # Return paper without PDF instead of None - don't discard
+                paper.pop("pdfContent", None)  # Remove old field if exists
+                return paper
 
             # Upload to B2
             b2_url = await self.b2_service.upload_pdf(paper, pdf_content)
@@ -71,29 +69,29 @@ class PDFProcessorService:
                 paper.pop("pdfContent", None)  # Remove old field
                 return paper
             else:
-                logger.error(
-                    f"❌ Failed to upload PDF to B2: {paper.get('title', 'Unknown')[:50]}"
-                )
-                return None  # Discard paper if upload failed
+                logger.error(f"❌ Failed to upload PDF to B2: {paper.get('title', 'Unknown')[:50]}")
+                # Return paper without PDF instead of None - don't discard
+                paper.pop("pdfContent", None)  # Remove old field if exists
+                return paper
 
         except Exception as e:
-            logger.error(
-                f"❌ Error processing PDF for paper {paper.get('title', 'Unknown')[:50]}: {str(e)}"
-            )
-            return None  # Discard paper on any error
+            logger.error(f"❌ Error processing PDF for paper {paper.get('title', 'Unknown')[:50]}: {str(e)}")
+            # Return paper without PDF instead of None - don't discard
+            paper.pop("pdfContent", None)  # Remove old field if exists
+            return paper
 
     async def process_papers_batch(
         self, papers: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """
         Process a batch of papers to handle their PDF content.
-        Only returns papers that successfully had their PDFs uploaded.
-
+        Returns all papers regardless of PDF processing success.
+        
         Args:
             papers: List of paper dictionaries
 
         Returns:
-            List of papers with successfully uploaded PDFs
+            List of all papers, with pdfContentUrl added for successful PDF uploads
         """
         if not papers:
             return papers
@@ -102,28 +100,25 @@ class PDFProcessorService:
 
         processed_papers = []
         success_count = 0
-        discarded_count = 0
+        failed_count = 0
 
         for paper in papers:
             try:
                 processed_paper = await self.process_paper_pdf(paper)
-
-                if processed_paper and processed_paper.get("pdfContentUrl"):
-                    processed_papers.append(processed_paper)
+                processed_papers.append(processed_paper)
+                
+                if processed_paper.get("pdfContentUrl"):
                     success_count += 1
                 else:
-                    discarded_count += 1
-                    logger.info(
-                        f"🗑️ Discarded paper (no PDF): {paper.get('title', 'Unknown')[:50]}"
-                    )
-
+                    failed_count += 1
+                    
             except Exception as e:
                 logger.error(f"❌ Error processing paper: {str(e)}")
-                discarded_count += 1
+                # Still add the original paper even if processing failed
+                processed_papers.append(paper)
+                failed_count += 1
 
-        logger.info(
-            f"📊 PDF processing completed: {success_count} successful, {discarded_count} discarded"
-        )
+        logger.info(f"📊 PDF processing completed: {success_count} successful, {failed_count} without PDF")
         return processed_papers
 
     async def process_papers_batch_parallel(
@@ -131,13 +126,14 @@ class PDFProcessorService:
     ) -> List[Dict[str, Any]]:
         """
         Process papers in parallel batches for faster processing.
-
+        Returns all papers regardless of PDF processing success.
+        
         Args:
             papers: List of paper dictionaries
             batch_size: Number of papers to process in parallel
 
         Returns:
-            List of papers with successfully uploaded PDFs
+            List of all papers, with pdfContentUrl added for successful PDF uploads
         """
         if not papers:
             return papers
@@ -150,43 +146,42 @@ class PDFProcessorService:
 
         all_processed_papers = []
         total_success = 0
-        total_discarded = 0
-
+        total_failed = 0
+        
         # Process papers in batches
         for i in range(0, len(papers), batch_size):
-            batch = papers[i : i + batch_size]
-            logger.info(
-                f"🔄 Processing batch {i//batch_size + 1}/{(len(papers) + batch_size - 1)//batch_size}"
-            )
-
+            batch = papers[i:i + batch_size]
+            batch_num = i//batch_size + 1
+            total_batches = (len(papers) + batch_size - 1)//batch_size
+            logger.info(f"🔄 Processing batch {batch_num}/{total_batches}")
+            
             # Process batch in parallel
             tasks = [self.process_paper_pdf(paper) for paper in batch]
             batch_results = await asyncio.gather(*tasks, return_exceptions=True)
-
-            # Collect successful results
+            
+            # Collect all results
             batch_success = 0
-            batch_discarded = 0
-
-            for result in batch_results:
+            batch_failed = 0
+            
+            for i, result in enumerate(batch_results):
                 if isinstance(result, Exception):
                     logger.error(f"❌ Batch processing error: {str(result)}")
-                    batch_discarded += 1
-                elif result and result.get("pdfContentUrl"):
-                    all_processed_papers.append(result)
-                    batch_success += 1
+                    # Still add the original paper even if processing failed
+                    all_processed_papers.append(batch[i])
+                    batch_failed += 1
                 else:
-                    batch_discarded += 1
-
+                    all_processed_papers.append(result)
+                    if result.get("pdfContentUrl"):
+                        batch_success += 1
+                    else:
+                        batch_failed += 1
+            
             total_success += batch_success
-            total_discarded += batch_discarded
+            total_failed += batch_failed
+            
+            logger.info(f"📊 Batch completed: {batch_success} successful, {batch_failed} without PDF")
 
-            logger.info(
-                f"📊 Batch completed: {batch_success} successful, {batch_discarded} discarded"
-            )
-
-        logger.info(
-            f"📊 All batches completed: {total_success} successful, {total_discarded} discarded"
-        )
+        logger.info(f"📊 All batches completed: {total_success} successful, {total_failed} without PDF")
         return all_processed_papers
 
     async def get_pdf_stats(self) -> Dict[str, Any]:
