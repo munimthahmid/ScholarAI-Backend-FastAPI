@@ -17,6 +17,9 @@ class Settings:
     # Academic APIs
     UNPAYWALL_EMAIL: str = os.getenv("UNPAYWALL_EMAIL", "")
 
+    # AI APIs
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+
     # FastAPI Configuration
     FASTAPI_HOST: str = os.getenv("FASTAPI_HOST", "0.0.0.0")
     FASTAPI_PORT: int = int(os.getenv("FASTAPI_PORT", "8001"))
@@ -27,3 +30,7 @@ class Settings:
 
 
 settings = Settings()
+
+def get_settings() -> Settings:
+    """Get the application settings."""
+    return settings

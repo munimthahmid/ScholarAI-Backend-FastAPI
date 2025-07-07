@@ -13,7 +13,7 @@ from app.services.summarizer.summarizer_agent import (
     SummarizationRequest,
     SummarizationStatus
 )
-from app.config import get_settings
+from app.core.config import get_settings
 
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class SummarizationMessageHandler(BaseMessageHandler):
         super().__init__()
         settings = get_settings()
         self.summarizer_agent = summarizer_agent or SummarizerAgent(
-            gemini_api_key=settings.gemini_api_key
+            gemini_api_key=settings.GEMINI_API_KEY
         )
 
     async def _process_message(self, body: Dict[str, Any]) -> Dict[str, Any]:
@@ -127,7 +127,3 @@ class SummarizationMessageHandler(BaseMessageHandler):
         """Get current processing timestamp."""
         return datetime.now().isoformat()
 
-    @property
-    def handler_name(self) -> str:
-        """Return the handler name for logging."""
-        return "SummarizationMessageHandler"
