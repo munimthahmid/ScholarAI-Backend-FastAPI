@@ -46,7 +46,6 @@ class SummarizationMessageHandler(BaseMessageHandler):
         Returns:
             Summarization results with structured content
         """
-        # Debug: Log the incoming message body
         logger.info(f"🔍 Received summarization message body: {body}")
         
         # Validate required fields

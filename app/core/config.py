@@ -30,3 +30,7 @@ class Settings:
 
 
 settings = Settings()
+
+def get_settings() -> Settings:
+    """Get the application settings."""
+    return settings
