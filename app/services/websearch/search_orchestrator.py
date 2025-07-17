@@ -52,13 +52,13 @@ class MultiSourceSearchOrchestrator:
         # All available sources - define before initializing clients
         self.active_sources = [
             # "Semantic Scholar",
-            "arXiv"
+            "arXiv",
             # "Crossref"
-            # "PubMed",
-            # "OpenAlex"
-            # "CORE",
+            "PubMed",
+            "OpenAlex",
+            "CORE",
             # "Unpaywall",
-            # "Europe PMC",
+            "Europe PMC"
             # "DBLP",
             # "bioRxiv",
             # "DOAJ",
@@ -85,9 +85,9 @@ class MultiSourceSearchOrchestrator:
             # "Semantic Scholar": SemanticScholarClient(api_key=s2_key),
             "arXiv": ArxivClient(),
             # "Crossref": CrossrefClient(),
-            # "PubMed": PubMedClient(),
-            # "OpenAlex": OpenAlexClient(),
-            # "Europe PMC": EuropePMCClient(),
+            "PubMed": PubMedClient(),
+            "OpenAlex": OpenAlexClient(),
+            "Europe PMC": EuropePMCClient(),
             # "DBLP": DBLPClient(),
             # "bioRxiv": BioRxivClient(),
             # "DOAJ": DOAJClient(),

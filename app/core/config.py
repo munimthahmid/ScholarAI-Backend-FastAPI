@@ -17,6 +17,9 @@ class Settings:
     # Academic APIs
     UNPAYWALL_EMAIL: str = os.getenv("UNPAYWALL_EMAIL", "")
 
+    # Google Gemini API
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+
     # FastAPI Configuration
     FASTAPI_HOST: str = os.getenv("FASTAPI_HOST", "0.0.0.0")
     FASTAPI_PORT: int = int(os.getenv("FASTAPI_PORT", "8001"))
