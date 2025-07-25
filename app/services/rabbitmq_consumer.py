@@ -3,7 +3,7 @@
 
 This file now uses a clean, modular architecture with separate services for:
 - Connection management
-- Message handling  
+- Message handling
 - Configuration management
 - WebSearch orchestration
 
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class RabbitMQConsumer:
     """
     🔄 Backward compatibility wrapper for the refactored consumer.
-    
+
     Maintains the same public interface as the original consumer while
     using the new modular architecture under the hood.
     """
@@ -32,12 +32,12 @@ class RabbitMQConsumer:
         # Initialize with new modular consumer
         self.config = AppConfig.from_env()
         self.consumer = ScholarAIConsumer(self.config)
-        
+
         # Expose legacy properties for backward compatibility
         self.connection = None
         self.channel = None
         self.websearch_agent = None
-        
+
         # Legacy configuration properties
         self.rabbitmq_host = self.config.rabbitmq.host
         self.rabbitmq_port = self.config.rabbitmq.port
@@ -53,7 +53,9 @@ class RabbitMQConsumer:
             # Set legacy properties for backward compatibility
             self.connection = self.consumer.connection_manager.connection
             self.channel = self.consumer.connection_manager.channel
-            print(f"✅ Connected to RabbitMQ at {self.rabbitmq_host}:{self.rabbitmq_port}")
+            print(
+                f"✅ Connected to RabbitMQ at {self.rabbitmq_host}:{self.rabbitmq_port}"
+            )
         else:
             print(f"❌ Failed to connect to RabbitMQ")
             raise Exception("Failed to connect to RabbitMQ")
@@ -71,7 +73,9 @@ class RabbitMQConsumer:
         """📥 Process websearch request (legacy interface - not used in new architecture)"""
         # This method is maintained for compatibility but not used
         # The new architecture handles this automatically through handlers
-        logger.warning("Legacy process_websearch_message called - using new handler architecture")
+        logger.warning(
+            "Legacy process_websearch_message called - using new handler architecture"
+        )
         await self.consumer._process_message(message)
 
     async def send_websearch_result(self, result):
@@ -105,7 +109,7 @@ consumer = RabbitMQConsumer()
 async def main():
     """Main entry point for running the consumer"""
     consumer_instance = RabbitMQConsumer()
-    
+
     try:
         await consumer_instance.start_consuming()
     except KeyboardInterrupt:

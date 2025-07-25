@@ -86,7 +86,7 @@ class CrossrefClient(BaseAcademicClient):
             # Handle date filters
             if "from_pub_date" in filters:
                 filter_parts.append(f"from-pub-date:{filters['from_pub_date']}")
-            
+
             if "until_pub_date" in filters:
                 filter_parts.append(f"until-pub-date:{filters['until_pub_date']}")
 
@@ -105,7 +105,7 @@ class CrossrefClient(BaseAcademicClient):
             # Boolean filters - only add if True
             if "has_full_text" in filters and filters["has_full_text"]:
                 filter_parts.append("has-full-text:true")
-            
+
             if "has_abstract" in filters and filters["has_abstract"]:
                 filter_parts.append("has-abstract:true")
 
@@ -249,4 +249,4 @@ class CrossrefClient(BaseAcademicClient):
 
         except Exception as e:
             logger.error(f"Error getting journal info from Crossref: {str(e)}")
-            return None 
+            return None

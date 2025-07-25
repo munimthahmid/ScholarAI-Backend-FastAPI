@@ -3,8 +3,8 @@
 ###############################################################################
 
 # ─── BUILD ARGUMENTS ─────────────────────────────────────────────────────────
-ARG PYTHON_VERSION=3.10.18
-ARG PYTHON_VARIANT=slim-bookworm
+ARG PYTHON_VERSION=3.10
+ARG PYTHON_VARIANT=slim
 
 FROM python:${PYTHON_VERSION}-${PYTHON_VARIANT}
 

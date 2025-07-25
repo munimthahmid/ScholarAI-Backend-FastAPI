@@ -27,10 +27,25 @@ class ArxivClient(BaseAcademicClient):
 
     def __init__(self):
         super().__init__(
-            base_url="http://export.arxiv.org/api",
+            base_url="https://export.arxiv.org/api",
             rate_limit_calls=300,  # arXiv allows 3 requests per second
             rate_limit_period=60,
             timeout=30,
+        )
+        
+        # Override headers for arXiv which returns Atom XML, not JSON
+        self.headers = {
+            "User-Agent": "ScholarAI/1.0 (https://scholarai.dev; mailto:contact@scholarai.dev)",
+            "Accept": "application/atom+xml",  # Changed from application/json
+            "Content-Type": "application/atom+xml",  # Changed from application/json
+        }
+        
+        # Update the HTTP client with new headers
+        import httpx
+        self.client = httpx.AsyncClient(
+            timeout=httpx.Timeout(self.timeout),
+            headers=self.headers,
+            limits=httpx.Limits(max_keepalive_connections=20, max_connections=100),
         )
 
     def _get_auth_headers(self) -> Dict[str, str]:
@@ -193,6 +208,7 @@ class ArxivClient(BaseAcademicClient):
 
         try:
             import httpx
+
             async with httpx.AsyncClient() as client:
                 response = await client.get(pdf_url)
                 response.raise_for_status()
@@ -215,4 +231,4 @@ class ArxivClient(BaseAcademicClient):
         # arXiv API doesn't provide version history directly
         # This would need to be implemented by parsing the paper page
         logger.info("arXiv version history not available through API")
-        return [] 
+        return []

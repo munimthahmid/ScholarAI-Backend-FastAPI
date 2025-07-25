@@ -14,7 +14,7 @@ from tenacity import (
     wait_exponential,
     retry_if_exception_type,
 )
-from ratelimit import limits, sleep_and_retry
+# from ratelimit import limits, sleep_and_retry  # REMOVED: Conflicted with tenacity
 import time
 
 from .exceptions import RateLimitError, APIError
@@ -49,7 +49,7 @@ class BaseAcademicClient(ABC):
         self.timeout = timeout
         self.max_retries = max_retries
         self.api_key = api_key
-        
+
         # Set source name based on class name
         self.source_name = self._get_source_name()
 
@@ -135,28 +135,30 @@ class BaseAcademicClient(ABC):
     async def get_references(
         self, paper_id: str, limit: int = 50
     ) -> List[Dict[str, Any]]:
-        """Get papers referenced by the given paper"""  
+        """Get papers referenced by the given paper"""
         pass
 
     def normalize_paper(self, raw_paper: Dict[str, Any]) -> Dict[str, Any]:
         """
         Normalize paper data using the unified normalizer.
-        
+
         Args:
             raw_paper: Raw paper data from API
-            
+
         Returns:
             Normalized paper dictionary
         """
         return PaperNormalizer.normalize(raw_paper, self.source_name)
 
-    def normalize_papers(self, raw_papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def normalize_papers(
+        self, raw_papers: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """
         Normalize multiple papers.
-        
+
         Args:
             raw_papers: List of raw paper data from API
-            
+
         Returns:
             List of normalized paper dictionaries
         """
@@ -167,8 +169,6 @@ class BaseAcademicClient(ABC):
                 normalized_papers.append(normalized)
         return normalized_papers
 
-    @sleep_and_retry
-    @limits(calls=100, period=60)  # Default rate limit
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=4, max=10),
@@ -249,16 +249,17 @@ class BaseAcademicClient(ABC):
 
     async def close(self):
         """Close the HTTP client"""
-        if hasattr(self, 'client'):
+        if hasattr(self, "client"):
             await self.client.aclose()
 
     def __del__(self):
         """Cleanup on deletion"""
-        if hasattr(self, 'client'):
+        if hasattr(self, "client"):
             try:
                 import asyncio
+
                 loop = asyncio.get_event_loop()
                 if not loop.is_closed():
                     loop.create_task(self.client.aclose())
             except Exception:
-                pass 
+                pass

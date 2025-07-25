@@ -4,7 +4,7 @@ Academic APIs module for comprehensive research paper discovery.
 This module provides clients for various academic databases and APIs:
 - Semantic Scholar: AI-powered semantic search and citation analysis
 - arXiv: Physics, mathematics, computer science preprints
-- Crossref: DOI metadata and citation information  
+- Crossref: DOI metadata and citation information
 - PubMed: Biomedical and life sciences literature
 - OpenAlex: Open catalog of scholarly papers and metadata
 - CORE: Open access research aggregator
@@ -44,7 +44,7 @@ from pydantic import ValidationError
 __all__ = [
     # Client classes
     "SemanticScholarClient",
-    "ArxivClient", 
+    "ArxivClient",
     "CrossrefClient",
     "PubMedClient",
     "OpenAlexClient",
@@ -58,7 +58,7 @@ __all__ = [
     # Base classes and exceptions
     "BaseAcademicClient",
     "APIError",
-    "RateLimitError", 
+    "RateLimitError",
     "ValidationError",
 ]
 

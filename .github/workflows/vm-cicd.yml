@@ -8,46 +8,43 @@ on:
 jobs:
   deploy-fastapi:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Setup SSH key
       run: |
         mkdir -p ~/.ssh
         echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H scholarai-vm.eastus.cloudapp.azure.com >> ~/.ssh/known_hosts
+        ssh-keyscan -H 4.247.29.26 >> ~/.ssh/known_hosts
 
     - name: Deploy FastAPI
       run: |
-        ssh azureuser@scholarai-vm.eastus.cloudapp.azure.com << 'EOF'
+        ssh seed@4.247.29.26 << 'EOF'
         set -e
-        
-        echo "🚀 Deploying FastAPI..."
+
+        echo "Deploying FastAPI..."
         cd /opt/scholarai/ScholarAI-Backend-FastAPI
-        
-        # Update repository
-        echo "📥 Updating ScholarAI-Backend-FastAPI..."
+
+        echo "Updating ScholarAI-Backend-FastAPI..."
         git pull origin main
-        
-        # Stop existing service
-        echo "🛑 Stopping FastAPI..."
+
+        echo "Stopping FastAPI..."
         ./scripts/docker.sh stop || true
-        
-        # Build and start service
-        echo "🔨 Building and starting FastAPI..."
+
+        echo "Building and starting FastAPI..."
         ./scripts/docker.sh build
         ./scripts/docker.sh start
-        
-        echo "✅ FastAPI deployment completed!"
+
+        echo "FastAPI deployment completed!"
         EOF
 
     - name: Health Check
       run: |
         sleep 30
-        echo "🏥 Running health check for FastAPI..."
-        if curl -f http://scholarai-vm.eastus.cloudapp.azure.com:8000/health; then
-          echo "✅ FastAPI is healthy"
+        echo "Running health check for FastAPI..."
+        if curl -f http://4.247.29.26:8000/health; then
+          echo " FastAPI is healthy"
         else
-          echo "❌ FastAPI health check failed"
+          echo "FastAPI health check failed"
           exit 1
-        fi 
+        fi

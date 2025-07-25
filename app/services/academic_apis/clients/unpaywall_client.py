@@ -26,7 +26,7 @@ class UnpaywallClient(BaseAcademicClient):
     def __init__(self, email: str):
         if not email:
             raise ValueError("Unpaywall API requires an email address")
-        
+
         super().__init__(
             base_url="https://api.unpaywall.org/v2",
             rate_limit_calls=100,  # 100 requests per second
@@ -57,7 +57,7 @@ class UnpaywallClient(BaseAcademicClient):
             doi = doi[4:]
         if doi.startswith("https://doi.org/"):
             doi = doi[16:]
-        
+
         params = {"email": self.email}
 
         try:
@@ -95,10 +95,7 @@ class UnpaywallClient(BaseAcademicClient):
             return []
 
         # Build search parameters
-        params = {
-            "query": query,
-            "email": self.email
-        }
+        params = {"query": query, "email": self.email}
 
         # Handle pagination - Unpaywall uses page numbers, not offset
         page = (offset // min(limit, 50)) + 1
@@ -110,7 +107,7 @@ class UnpaywallClient(BaseAcademicClient):
             # Check for open access filter
             if "is_oa" in filters:
                 params["is_oa"] = filters["is_oa"]
-            
+
             # Handle date filters if provided
             if "year_min" in filters:
                 # Note: Unpaywall search doesn't directly support date filtering
@@ -125,13 +122,15 @@ class UnpaywallClient(BaseAcademicClient):
                 return []
 
             # Handle response format - could be array of results or object with results
-            results = response if isinstance(response, list) else response.get("results", [])
-            
+            results = (
+                response if isinstance(response, list) else response.get("results", [])
+            )
+
             papers = []
             for result in results[:limit]:  # Respect the limit parameter
                 # The search API returns objects with 'response' containing the paper data
                 paper_data = result.get("response", result)
-                
+
                 if paper_data:
                     parsed_paper = JSONParser.parse_unpaywall_paper(paper_data)
                     normalized_paper = self.normalize_paper(parsed_paper)
@@ -165,7 +164,7 @@ class UnpaywallClient(BaseAcademicClient):
     ) -> List[Dict[str, Any]]:
         """
         Unpaywall doesn't provide citation data
-        
+
         Args:
             paper_id: Paper DOI
             limit: Maximum citations
@@ -203,7 +202,7 @@ class UnpaywallClient(BaseAcademicClient):
             List of paper information with OA status
         """
         results = []
-        
+
         for doi in dois:
             paper = await self.get_paper_by_doi(doi)
             if paper:
@@ -222,19 +221,21 @@ class UnpaywallClient(BaseAcademicClient):
             PDF URL or None if no OA version available
         """
         paper = await self.get_paper_by_doi(doi)
-        
+
         # Use the normalized field name 'isOpenAccess'
         if not paper or not paper.get("isOpenAccess"):
             return None
 
         # Look for best OA location
         oa_locations = paper.get("oa_locations", [])
-        
+
         # Prefer repository versions over publisher versions
         for location in oa_locations:
-            if location.get("host_type") == "repository" and location.get("url_for_pdf"):
+            if location.get("host_type") == "repository" and location.get(
+                "url_for_pdf"
+            ):
                 return location["url_for_pdf"]
-        
+
         # Fall back to publisher versions
         for location in oa_locations:
             if location.get("url_for_pdf"):
@@ -253,7 +254,7 @@ class UnpaywallClient(BaseAcademicClient):
             Dictionary mapping DOI to OA status
         """
         oa_status = {}
-        
+
         for doi in dois:
             paper = await self.get_paper_by_doi(doi)
             # Use the normalized field name 'isOpenAccess'
@@ -272,30 +273,29 @@ class UnpaywallClient(BaseAcademicClient):
             List of repository location information
         """
         paper = await self.get_paper_by_doi(doi)
-        
+
         if not paper:
             return []
 
         oa_locations = paper.get("oa_locations", [])
         repository_versions = []
-        
+
         for location in oa_locations:
             if location.get("host_type") == "repository":
-                repository_versions.append({
-                    "repository": location.get("repository_institution"),
-                    "url": location.get("url"),
-                    "pdf_url": location.get("url_for_pdf"),
-                    "version": location.get("oa_version"),
-                    "license": location.get("license"),
-                })
+                repository_versions.append(
+                    {
+                        "repository": location.get("repository_institution"),
+                        "url": location.get("url"),
+                        "pdf_url": location.get("url_for_pdf"),
+                        "version": location.get("oa_version"),
+                        "license": location.get("license"),
+                    }
+                )
 
         return repository_versions
 
     async def search_open_access_only(
-        self,
-        query: str,
-        limit: int = 20,
-        offset: int = 0
+        self, query: str, limit: int = 20, offset: int = 0
     ) -> List[Dict[str, Any]]:
         """
         Search for open access papers only
@@ -309,4 +309,4 @@ class UnpaywallClient(BaseAcademicClient):
             List of open access papers
         """
         filters = {"is_oa": True}
-        return await self.search_papers(query, limit, offset, filters) 
+        return await self.search_papers(query, limit, offset, filters)

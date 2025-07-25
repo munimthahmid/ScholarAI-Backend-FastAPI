@@ -54,7 +54,9 @@ class BASESearchClient(BaseAcademicClient):
         """
         # BASE Search API endpoint appears to be unavailable or changed
         # Disabling for now to prevent 404 errors
-        logger.warning("BASE Search API endpoint is not available - returning empty results")
+        logger.warning(
+            "BASE Search API endpoint is not available - returning empty results"
+        )
         return []
 
     async def get_paper_details(self, paper_id: str) -> Optional[Dict[str, Any]]:
@@ -68,23 +70,21 @@ class BASESearchClient(BaseAcademicClient):
             Normalized paper dictionary or None if not found
         """
         # Search for the specific document by ID
-        params = {
-            "query": f"id:{paper_id}",
-            "hits": 1,
-            "format": "json"
-        }
+        params = {"query": f"id:{paper_id}", "hits": 1, "format": "json"}
 
         try:
             response = await self._make_request("GET", "/search", params=params)
-            
-            if (response.get("response") and 
-                response["response"].get("docs") and 
-                len(response["response"]["docs"]) > 0):
-                
+
+            if (
+                response.get("response")
+                and response["response"].get("docs")
+                and len(response["response"]["docs"]) > 0
+            ):
+
                 doc = response["response"]["docs"][0]
                 parsed_paper = JSONParser.parse_base_paper(doc)
                 return self.normalize_paper(parsed_paper)
-            
+
             return None
 
         except Exception as e:
@@ -139,9 +139,7 @@ class BASESearchClient(BaseAcademicClient):
             List of normalized paper dictionaries
         """
         return await self.search_papers(
-            query="*",
-            limit=limit,
-            filters={"repository": repository_name}
+            query="*", limit=limit, filters={"repository": repository_name}
         )
 
     async def search_by_subject(
@@ -158,16 +156,14 @@ class BASESearchClient(BaseAcademicClient):
             List of normalized paper dictionaries
         """
         return await self.search_papers(
-            query="*",
-            limit=limit,
-            filters={"subject": subject}
+            query="*", limit=limit, filters={"subject": subject}
         )
 
     async def get_repositories(self, limit: int = 100) -> List[Dict[str, Any]]:
         """
         Get list of available repositories in BASE
         Note: This would require a separate API endpoint that BASE might not provide
-        
+
         Args:
             limit: Maximum number of repositories to return
 
@@ -177,7 +173,7 @@ class BASESearchClient(BaseAcademicClient):
         # BASE doesn't provide a direct repositories endpoint in their search API
         # This would need to be implemented differently or return common repositories
         logger.warning("BASE API doesn't provide a repositories listing endpoint")
-        
+
         # Return some common European repositories that are indexed by BASE
         common_repos = [
             {"name": "arXiv.org", "country": "USA", "type": "Preprint server"},
@@ -187,7 +183,7 @@ class BASESearchClient(BaseAcademicClient):
             {"name": "SSOAR", "country": "Germany", "type": "Social sciences"},
             {"name": "OAPEN", "country": "Netherlands", "type": "Open access books"},
         ]
-        
+
         return common_repos[:limit]
 
     async def search_open_access(
@@ -204,7 +200,5 @@ class BASESearchClient(BaseAcademicClient):
             List of normalized paper dictionaries
         """
         return await self.search_papers(
-            query=query,
-            limit=limit,
-            filters={"open_access": True}
-        ) 
+            query=query, limit=limit, filters={"open_access": True}
+        )

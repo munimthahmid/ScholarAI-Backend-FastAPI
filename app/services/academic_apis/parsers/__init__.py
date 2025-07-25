@@ -8,6 +8,6 @@ from .feed_parser import FeedParser
 
 __all__ = [
     "XMLParser",
-    "JSONParser", 
+    "JSONParser",
     "FeedParser",
-] 
+]

@@ -26,13 +26,13 @@ class BioRxivClient(BaseAcademicClient):
     def __init__(self, server: str = "biorxiv"):
         """
         Initialize the client for bioRxiv or medRxiv
-        
+
         Args:
             server: "biorxiv" or "medrxiv"
         """
         if server not in ["biorxiv", "medrxiv"]:
             raise ValueError("Server must be 'biorxiv' or 'medrxiv'")
-        
+
         self.server = server
         super().__init__(
             base_url=f"https://api.{server}.org",
@@ -66,9 +66,11 @@ class BioRxivClient(BaseAcademicClient):
             List of normalized paper dictionaries
         """
         # Get recent papers and filter locally since there's no search API
-        date_from = datetime.now() - timedelta(days=365)  # Last year by default instead of 30 days
+        date_from = datetime.now() - timedelta(
+            days=365
+        )  # Last year by default instead of 30 days
         date_to = datetime.now()
-        
+
         if filters and "date_range" in filters:
             date_from = datetime.fromisoformat(filters["date_range"][0])
             date_to = datetime.fromisoformat(filters["date_range"][1])
@@ -77,12 +79,12 @@ class BioRxivClient(BaseAcademicClient):
         interval = f"{date_from.strftime('%Y-%m-%d')}/{date_to.strftime('%Y-%m-%d')}"
         cursor = offset
         format_type = "json"
-        
+
         # Build the correct URL path according to bioRxiv/medRxiv API docs:
         # https://api.biorxiv.org/details/[server]/[interval]/[cursor]/[format]
         # https://api.medrxiv.org/details/[server]/[interval]/[cursor]/[format]
         endpoint_path = f"details/{self.server}/{interval}/{cursor}/{format_type}"
-        
+
         # Add category filter as query parameter if provided
         params = {}
         if filters and "category" in filters:
@@ -90,9 +92,9 @@ class BioRxivClient(BaseAcademicClient):
 
         try:
             response = await self._make_request("GET", endpoint_path, params=params)
-            
+
             papers = response.get("collection", [])
-            
+
             # Local filtering by query terms - use broader matching
             if query:
                 query_terms = query.lower().split()
@@ -100,20 +102,26 @@ class BioRxivClient(BaseAcademicClient):
                 for paper in papers:
                     title = paper.get("title", "").lower()
                     abstract = paper.get("abstract", "").lower()
-                    
+
                     # Handle authors - can be a string or list
                     authors_text = ""
                     authors_data = paper.get("authors", "")
                     if isinstance(authors_data, str):
                         authors_text = authors_data.lower()
                     elif isinstance(authors_data, list):
-                        authors_text = " ".join([
-                            author.get("name", "") if isinstance(author, dict) else str(author) 
-                            for author in authors_data
-                        ]).lower()
-                    
+                        authors_text = " ".join(
+                            [
+                                (
+                                    author.get("name", "")
+                                    if isinstance(author, dict)
+                                    else str(author)
+                                )
+                                for author in authors_data
+                            ]
+                        ).lower()
+
                     content = f"{title} {abstract} {authors_text}"
-                    
+
                     # Check if any query term matches (not all terms required)
                     if any(term in content for term in query_terms):
                         filtered_papers.append(paper)
@@ -122,7 +130,11 @@ class BioRxivClient(BaseAcademicClient):
             # Apply additional filters
             if filters:
                 if "category" in filters:
-                    papers = [p for p in papers if filters["category"].lower() in p.get("category", "").lower()]
+                    papers = [
+                        p
+                        for p in papers
+                        if filters["category"].lower() in p.get("category", "").lower()
+                    ]
 
             logger.info(
                 f"Found {len(papers)} papers from {self.server} for query: {query}"
@@ -178,7 +190,7 @@ class BioRxivClient(BaseAcademicClient):
     ) -> List[Dict[str, Any]]:
         """
         bioRxiv/medRxiv don't provide citation data directly
-        
+
         Args:
             paper_id: Paper DOI or ID
             limit: Maximum citations
@@ -225,7 +237,7 @@ class BioRxivClient(BaseAcademicClient):
         # Format interval and build correct path
         interval = f"{date_from.strftime('%Y-%m-%d')}/{date_to.strftime('%Y-%m-%d')}"
         endpoint_path = f"details/{self.server}/{interval}/0/json"
-        
+
         # Add category as query parameter
         params = {"category": category}
 
@@ -235,8 +247,7 @@ class BioRxivClient(BaseAcademicClient):
 
             # Filter by category (additional filtering in case API doesn't handle it properly)
             filtered_papers = [
-                p for p in papers 
-                if category.lower() in p.get("category", "").lower()
+                p for p in papers if category.lower() in p.get("category", "").lower()
             ]
 
             parsed_papers = []
@@ -247,7 +258,9 @@ class BioRxivClient(BaseAcademicClient):
             return self.normalize_papers(parsed_papers)
 
         except Exception as e:
-            logger.error(f"Error getting papers by category from {self.server}: {str(e)}")
+            logger.error(
+                f"Error getting papers by category from {self.server}: {str(e)}"
+            )
             return []
 
     async def get_recent_papers(
@@ -310,7 +323,7 @@ class BioRxivClient(BaseAcademicClient):
 
             if response and response.get("collection"):
                 versions = response["collection"]
-                
+
                 parsed_versions = []
                 for version in versions:
                     parsed_paper = JSONParser.parse_biorxiv_paper(version)
@@ -367,4 +380,4 @@ class BioRxivClient(BaseAcademicClient):
 
         except Exception as e:
             logger.error(f"Error searching by author in {self.server}: {str(e)}")
-            return [] 
+            return []

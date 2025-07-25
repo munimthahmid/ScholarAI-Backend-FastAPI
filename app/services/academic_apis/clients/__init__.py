@@ -18,7 +18,7 @@ from .base_search_client import BASESearchClient
 __all__ = [
     "SemanticScholarClient",
     "PubMedClient",
-    "ArxivClient", 
+    "ArxivClient",
     "CrossrefClient",
     "OpenAlexClient",
     "COREClient",
@@ -28,4 +28,4 @@ __all__ = [
     "BioRxivClient",
     "DOAJClient",
     "BASESearchClient",
-] 
+]

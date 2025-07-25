@@ -68,29 +68,31 @@ class EuropePMCClient(BaseAcademicClient):
         if filters:
             if "year" in filters:
                 if isinstance(filters["year"], list):
-                    filter_parts.append(f"(PUB_YEAR:[{filters['year'][0]} TO {filters['year'][1]}])")
+                    filter_parts.append(
+                        f"(PUB_YEAR:[{filters['year'][0]} TO {filters['year'][1]}])"
+                    )
                 else:
                     filter_parts.append(f"PUB_YEAR:{filters['year']}")
-            
+
             if "source" in filters:
                 filter_parts.append(f"SRC:{filters['source']}")
-            
+
             if "open_access" in filters and filters["open_access"]:
                 filter_parts.append("OPEN_ACCESS:y")
-            
+
             if "has_fulltext" in filters and filters["has_fulltext"]:
                 filter_parts.append("HAS_FT:y")
-            
+
             if "mesh_terms" in filters:
                 for term in filters["mesh_terms"]:
-                    filter_parts.append(f"MESH:\"{term}\"")
+                    filter_parts.append(f'MESH:"{term}"')
 
         if filter_parts:
             params["query"] = f"({query}) AND ({' AND '.join(filter_parts)})"
 
         try:
             response = await self._make_request("GET", "/search", params=params)
-            
+
             result_list = response.get("resultList", {})
             papers = result_list.get("result", [])
 
@@ -140,10 +142,16 @@ class EuropePMCClient(BaseAcademicClient):
         }
 
         try:
-            response = await self._make_request("GET", f"/{source}/{ext_id}", params=params)
+            response = await self._make_request(
+                "GET", f"/{source}/{ext_id}", params=params
+            )
 
             if response and response.get("result"):
-                result = response["result"][0] if isinstance(response["result"], list) else response["result"]
+                result = (
+                    response["result"][0]
+                    if isinstance(response["result"], list)
+                    else response["result"]
+                )
                 parsed_paper = JSONParser.parse_europepmc_paper(result)
                 return self.normalize_paper(parsed_paper)
             return None
@@ -188,7 +196,7 @@ class EuropePMCClient(BaseAcademicClient):
 
             citation_list = response.get("citationList", {})
             citations = citation_list.get("citation", [])
-            
+
             logger.info(f"Found {len(citations)} citations for paper {paper_id}")
 
             # Get detailed info for each citation
@@ -241,7 +249,7 @@ class EuropePMCClient(BaseAcademicClient):
 
             reference_list = response.get("referenceList", {})
             references = reference_list.get("reference", [])
-            
+
             logger.info(f"Found {len(references)} references for paper {paper_id}")
 
             # Get detailed info for each reference
@@ -272,7 +280,7 @@ class EuropePMCClient(BaseAcademicClient):
             List of normalized paper dictionaries
         """
         mesh_query = " AND ".join([f'MESH:"{term}"' for term in mesh_terms])
-        
+
         params = {
             "query": mesh_query,
             "resultType": "core",
@@ -282,7 +290,7 @@ class EuropePMCClient(BaseAcademicClient):
 
         try:
             response = await self._make_request("GET", "/search", params=params)
-            
+
             result_list = response.get("resultList", {})
             papers = result_list.get("result", [])
 
@@ -320,7 +328,9 @@ class EuropePMCClient(BaseAcademicClient):
 
         try:
             # Change response format for XML
-            response = await self._make_request("GET", f"/{source}/{ext_id}/fullTextXML")
+            response = await self._make_request(
+                "GET", f"/{source}/{ext_id}/fullTextXML"
+            )
             return response
 
         except Exception as e:
@@ -349,7 +359,7 @@ class EuropePMCClient(BaseAcademicClient):
 
         try:
             response = await self._make_request("GET", "/search", params=params)
-            
+
             result_list = response.get("resultList", {})
             trials = result_list.get("result", [])
 
@@ -357,4 +367,4 @@ class EuropePMCClient(BaseAcademicClient):
 
         except Exception as e:
             logger.error(f"Error searching clinical trials in Europe PMC: {str(e)}")
-            return [] 
+            return []

@@ -1,6 +1,7 @@
 """
 RabbitMQ connection management
 """
+
 import logging
 from typing import Optional
 import aio_pika
@@ -14,22 +15,23 @@ logger = logging.getLogger(__name__)
 class RabbitMQConnection:
     """
     Manages RabbitMQ connection, exchanges, and queues.
-    
+
     Provides a clean interface for connection management with automatic
     reconnection and proper resource cleanup.
     """
-    
+
     def __init__(self, config: RabbitMQConfig):
         self.config = config
         self.connection: Optional[Connection] = None
         self.channel: Optional[Channel] = None
         self.exchange: Optional[Exchange] = None
         self.websearch_queue: Optional[Queue] = None
-    
+        self.extraction_queue: Optional[Queue] = None
+
     async def connect(self) -> bool:
         """
         Establish connection to RabbitMQ.
-        
+
         Returns:
             True if connection successful, False otherwise
         """
@@ -40,100 +42,148 @@ class RabbitMQConnection:
                 login=self.config.username,
                 password=self.config.password,
             )
-            
+
             self.channel = await self.connection.channel()
             await self.channel.set_qos(prefetch_count=self.config.prefetch_count)
-            
-            logger.info(f"🔗 Connected to RabbitMQ ({self.config.host}:{self.config.port})")
+
+            logger.info(
+                f"🔗 Connected to RabbitMQ ({self.config.host}:{self.config.port})"
+            )
             return True
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to connect to RabbitMQ: {e}")
             return False
-    
+
     async def setup_queues(self) -> bool:
         """
         Setup exchanges and queues.
-        
+
         Returns:
             True if setup successful, False otherwise
         """
         try:
             if not self.channel:
                 raise RuntimeError("Channel not available. Call connect() first.")
-            
+
             # Declare exchange
             self.exchange = await self.channel.declare_exchange(
-                self.config.exchange_name, 
-                aio_pika.ExchangeType.TOPIC, 
-                durable=self.config.durable_queues
+                self.config.exchange_name,
+                aio_pika.ExchangeType.TOPIC,
+                durable=self.config.durable_queues,
             )
-            
+
             # Declare websearch queue
             self.websearch_queue = await self.channel.declare_queue(
-                self.config.websearch_queue, 
-                durable=self.config.durable_queues
+                self.config.websearch_queue, durable=self.config.durable_queues
             )
-            
-            # Bind queue to exchange
+
+            # Bind websearch queue to exchange
             await self.websearch_queue.bind(
-                self.exchange, 
-                self.config.routing_key_request
+                self.exchange, self.config.routing_key_request
             )
-            
-            logger.info("📋 RabbitMQ queues configured")
+
+            # Declare extraction queue
+            self.extraction_queue = await self.channel.declare_queue(
+                "scholarai.extraction.queue", durable=self.config.durable_queues
+            )
+
+            # Bind extraction queue to exchange
+            await self.extraction_queue.bind(self.exchange, "scholarai.extraction")
+
+            # Declare extraction completed queue (for responses)
+            self.extraction_completed_queue = await self.channel.declare_queue(
+                "scholarai.extraction.completed.queue",
+                durable=self.config.durable_queues,
+            )
+
+            # Bind extraction completed queue to exchange
+            await self.extraction_completed_queue.bind(
+                self.exchange, "scholarai.extraction.completed"
+            )
+
+            # Declare structuring queue
+            self.structuring_queue = await self.channel.declare_queue(
+                "scholarai.structuring.queue", durable=self.config.durable_queues
+            )
+
+            # Bind structuring queue to exchange
+            await self.structuring_queue.bind(self.exchange, "scholarai.structuring")
+
+            # Declare structuring completed queue (for responses)
+            self.structuring_completed_queue = await self.channel.declare_queue(
+                "scholarai.structuring.completed.queue",
+                durable=self.config.durable_queues,
+            )
+
+            # Bind structuring completed queue to exchange
+            await self.structuring_completed_queue.bind(
+                self.exchange, "scholarai.structuring.completed"
+            )
+
+            logger.info(
+                "📋 RabbitMQ queues configured (websearch, extraction, structuring)"
+            )
             return True
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to setup queues: {e}")
             return False
-    
+
     async def publish_message(
-        self, 
-        message_body: bytes, 
-        routing_key: str, 
-        content_type: str = "application/json"
+        self,
+        message_body: bytes,
+        routing_key: str,
+        content_type: str = "application/json",
     ) -> bool:
         """
         Publish a message to the exchange.
-        
+
         Args:
             message_body: Message content as bytes
             routing_key: Routing key for message
             content_type: Content type of the message
-            
+
         Returns:
             True if published successfully, False otherwise
         """
         try:
             if not self.exchange:
                 raise RuntimeError("Exchange not available. Call setup_queues() first.")
-            
+
             message = aio_pika.Message(
                 message_body,
                 content_type=content_type,
             )
-            
+
             await self.exchange.publish(message, routing_key=routing_key)
             logger.debug(f"📤 Published message to {routing_key}")
             return True
-            
+
         except Exception as e:
             logger.error(f"❌ Failed to publish message: {e}")
             return False
-    
+
     def get_websearch_queue(self) -> Optional[Queue]:
         """Get the websearch queue for consuming"""
         return self.websearch_queue
-    
+
+    def get_extraction_queue(self) -> Optional[Queue]:
+        """Get the extraction queue for consuming"""
+        return self.extraction_queue
+
+    def get_structuring_queue(self) -> Optional[Queue]:
+        """Get the structuring queue for consuming"""
+        return self.structuring_queue
+
     def is_connected(self) -> bool:
         """Check if connection is active"""
         return (
-            self.connection is not None 
+            self.connection is not None
             and not self.connection.is_closed
             and self.channel is not None
         )
-    
+
     async def close(self):
         """Close RabbitMQ connection and clean up resources"""
         try:
@@ -146,4 +196,5 @@ class RabbitMQConnection:
             self.connection = None
             self.channel = None
             self.exchange = None
-            self.websearch_queue = None 
+            self.websearch_queue = None
+            self.extraction_queue = None
