@@ -7,7 +7,7 @@ load_dotenv()
 
 
 class Settings:
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://4.247.29.26:3000", "http://127.0.0.1:3000"]
 
     # Backblaze B2 Configuration
     B2_KEY_ID: str = os.getenv("B2_KEY_ID", "")

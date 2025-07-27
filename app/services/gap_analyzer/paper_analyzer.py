@@ -37,6 +37,15 @@ class PaperAnalyzer:
         self.b2_client = B2StorageService()
         self.text_extractor = TextExtractorAgent(self.b2_client)
         
+    async def initialize(self):
+        """Initialize B2 client for proper authentication."""
+        try:
+            await self.b2_client.initialize()
+            logger.info("B2 client initialized for paper analyzer")
+        except Exception as e:
+            logger.error(f"Failed to initialize B2 client: {str(e)}")
+            raise
+        
     async def analyze_paper(self, paper_url: str) -> Optional[PaperAnalysis]:
         """
         Extract and analyze a research paper to create structured analysis.
@@ -107,8 +116,27 @@ class PaperAnalyzer:
     async def _extract_paper_text(self, paper_url: str) -> Optional[str]:
         """Extract text content from a research paper URL"""
         try:
+            # For B2 URLs, use proper B2 download method
+            if "backblazeb2.com" in paper_url:
+                # Create extraction request for B2 URL
+                extraction_request = ExtractionRequest(
+                    correlation_id=f"gap_analysis_{hash(paper_url)}",
+                    paper_id=paper_url.split("fileId=")[1].split("&")[0] if "fileId=" in paper_url else paper_url,
+                    pdf_url=paper_url,
+                    requested_by="gap_analyzer"
+                )
+                
+                # Extract text using existing extractor (which handles B2 properly)
+                result = await self.text_extractor.process_extraction_request(extraction_request)
+                
+                if result.extracted_text:
+                    return result.extracted_text
+                else:
+                    logger.warning(f"Text extraction failed for B2 URL {paper_url}: {result.error_message}")
+                    return None
+            
             # For ArXiv papers, we can directly download the PDF
-            if "arxiv.org" in paper_url:
+            elif "arxiv.org" in paper_url:
                 # Convert ArXiv URL to PDF URL
                 if "/abs/" in paper_url:
                     pdf_url = paper_url.replace("/abs/", "/pdf/") + ".pdf"
