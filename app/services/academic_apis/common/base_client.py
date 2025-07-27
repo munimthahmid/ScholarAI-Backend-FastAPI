@@ -209,7 +209,7 @@ class BaseAcademicClient(ABC):
 
             # Handle rate limiting
             if response.status_code == 429:
-                retry_after = int(response.headers.get("Retry-After", 60))
+                retry_after = int(response.headers.get("Retry-After", 2))  # Minimal wait for testing
                 logger.warning(f"Rate limited. Waiting {retry_after} seconds...")
                 await asyncio.sleep(retry_after)
                 raise RateLimitError("Rate limit exceeded")
