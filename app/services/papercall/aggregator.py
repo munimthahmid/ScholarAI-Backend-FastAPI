@@ -5,9 +5,8 @@ PaperCall aggregator service
 import logging
 from typing import List, Dict, Any
 from .fetchers.wikicfp import fetch_cfp_info
-from .fetchers.mdpi import fetch_mdpi_special_issues
-from .fetchers.taylor_francis import fetch_taylor_special_issues
-from .fetchers.springer import fetch_springer_special_issues
+from .fetchers.crossref import fetch_crossref_special_issues, fetch_crossref_conferences
+from .fetchers.fallback_data import get_fallback_conferences, get_fallback_journals, should_use_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -25,22 +24,47 @@ def aggregate_all(domain: str) -> List[Dict[str, Any]]:
     try:
         logger.info(f"🔍 Starting paper call aggregation for domain: {domain}")
         
-        # Fetch from all sources
-        conferences = fetch_cfp_info(domain)
-        journals_mdpi = fetch_mdpi_special_issues(domain)
-        journals_taylor = fetch_taylor_special_issues(domain)
-        journals_springer = fetch_springer_special_issues(domain)
+        # Fetch from reliable sources only
+        conferences_wikicfp = fetch_cfp_info(domain)
+        
+        # Try CrossRef with error handling
+        try:
+            conferences_crossref = fetch_crossref_conferences(domain)
+        except Exception as e:
+            logger.warning(f"CrossRef conferences failed for {domain}: {e}")
+            conferences_crossref = []
+        
+        # Fetch journals from reliable sources only
+        try:
+            journals_crossref = fetch_crossref_special_issues(domain)
+        except Exception as e:
+            logger.warning(f"CrossRef journals failed for {domain}: {e}")
+            journals_crossref = []
         
         # Log results
-        logger.info(f"Found {len(conferences)} conferences, {len(journals_mdpi)} MDPI journals, "
-                   f"{len(journals_taylor)} Taylor & Francis journals, {len(journals_springer)} Springer journals")
+        total_conferences = len(conferences_wikicfp) + len(conferences_crossref)
+        total_journals = len(journals_crossref)
+        
+        logger.info(f"Found {total_conferences} conferences and {total_journals} journals for domain: {domain}")
+        logger.info(f"Sources: WikiCFP({len(conferences_wikicfp)}), CrossRef({len(conferences_crossref)}+{len(journals_crossref)})")
         
         # Combine all results
-        combined = conferences + journals_mdpi + journals_taylor + journals_springer
+        all_conferences = conferences_wikicfp + conferences_crossref
+        all_journals = journals_crossref
+        combined = all_conferences + all_journals
         
         if not combined:
             logger.warning(f"No paper calls found for domain: {domain}")
-            return []
+            
+            # Use fallback data if enabled
+            if should_use_fallback():
+                logger.info("Using fallback data for testing purposes")
+                fallback_conferences = get_fallback_conferences(domain)
+                fallback_journals = get_fallback_journals(domain)
+                combined = fallback_conferences + fallback_journals
+                logger.info(f"Added {len(combined)} fallback paper calls")
+            else:
+                return []
         
         # Deduplicate by title
         seen_titles = set()
