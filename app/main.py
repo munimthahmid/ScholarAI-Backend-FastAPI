@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.core.logging_config import configure_logging_from_env
 from app.services.rabbitmq_consumer import consumer
 from app.services.pdf_processor import pdf_processor
+from app.services.gap_analyzer.background_processor import background_processor
 
 # Setup environment-aware logging
 configure_logging_from_env()
@@ -25,6 +26,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️ B2 storage initialization failed: {str(e)}")
         print("📄 PDF processing will be disabled")
+
+    # Initialize gap analysis background processor
+    try:
+        await background_processor.initialize()
+        print("✅ Gap analysis background processor initialized")
+    except Exception as e:
+        print(f"⚠️ Gap analysis initialization failed: {str(e)}")
+        print("🔍 Gap analysis will be disabled")
 
     # Start RabbitMQ consumer as background task
     consumer_task = asyncio.create_task(consumer.start_consuming())

@@ -53,6 +53,15 @@ class GapAnalysisOrchestrator:
         else:
             logger.warning("Gemini API key not found. Some features will be limited.")
             self.model = None
+            
+    async def initialize(self):
+        """Initialize all components including B2 client."""
+        try:
+            await self.paper_analyzer.initialize()
+            logger.info("Gap analysis orchestrator initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize gap analysis orchestrator: {str(e)}")
+            raise
         
         # EXPANDING FRONTIER ARCHITECTURE - State tracking
         self.gap_search_queue: List[ResearchGap] = []  # Gaps waiting to be searched for solutions
@@ -115,11 +124,19 @@ class GapAnalysisOrchestrator:
             
         except Exception as e:
             logger.error(f"Gap analysis {request_id} failed: {str(e)}")
-            # Return error response
+            # Return error response with complete metadata
             return GapAnalysisResponse(
                 request_id=request_id,
                 seed_paper_url=request.url,
                 validated_gaps=[],
+                executive_summary=ExecutiveSummary(
+                    frontier_overview="Analysis failed during initial paper processing",
+                    key_insights=["Unable to process seed paper", "B2 authentication or extraction issues"],
+                    research_priorities=["Fix paper extraction pipeline", "Verify B2 credentials"],
+                    investment_opportunities=[],
+                    competitive_advantages=[],
+                    risk_assessment="High risk due to processing failures"
+                ),
                 process_metadata=ProcessMetadata(
                     request_id=request_id,
                     total_papers_analyzed=len(self.analyzed_papers),
@@ -129,7 +146,41 @@ class GapAnalysisOrchestrator:
                     gaps_eliminated=0,
                     search_queries_executed=0,
                     validation_attempts=0,
-                    seed_paper_url=request.url
+                    seed_paper_url=request.url,
+                    frontier_stats=ResearchFrontierStats(
+                        frontier_expansions=0,
+                        research_domains_explored=0,
+                        cross_domain_connections=0,
+                        breakthrough_potential_score=0.0,
+                        research_velocity=0.0,
+                        gap_discovery_rate=0.0,
+                        elimination_effectiveness=0.0,
+                        frontier_coverage=0.0
+                    ),
+                    research_landscape=ResearchLandscape(
+                        dominant_research_areas=[],
+                        emerging_trends=[],
+                        research_clusters={},
+                        interdisciplinary_bridges=[],
+                        hottest_research_areas=[]
+                    ),
+                    avg_paper_analysis_time=0.0,
+                    successful_paper_extractions=0,
+                    failed_extractions=1,
+                    gemini_api_calls=0,
+                    llm_tokens_processed=0,
+                    ai_confidence_score=0.0,
+                    citation_potential_score=0.0,
+                    novelty_index=0.0,
+                    impact_factor_projection=0.0
+                ),
+                research_intelligence=ResearchIntelligence(
+                    eliminated_gaps=[],
+                    research_momentum={},
+                    emerging_collaborations=[],
+                    technology_readiness={},
+                    patent_landscape={},
+                    funding_trends={}
                 )
             )
 

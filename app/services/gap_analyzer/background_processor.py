@@ -51,6 +51,15 @@ class GapAnalysisBackgroundProcessor:
         self.max_concurrent_jobs = 2
         self.running_jobs = 0
         
+    async def initialize(self):
+        """Initialize the orchestrator and B2 client."""
+        try:
+            await self.orchestrator.initialize()
+            logger.info("Gap analysis background processor initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize gap analysis background processor: {str(e)}")
+            raise
+        
     async def submit_job(self, request: GapAnalysisRequest) -> str:
         """
         Submit a new gap analysis job for background processing.
