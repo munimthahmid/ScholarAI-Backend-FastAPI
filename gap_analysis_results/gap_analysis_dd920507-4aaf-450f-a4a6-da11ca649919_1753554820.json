@@ -1,0 +1,69 @@
+{
+  "request_id": "5ec4ab1a",
+  "seed_paper_url": "https://bmcecolevol.biomedcentral.com/counter/pdf/10.1186/s12862-024-02309-z.pdf",
+  "validated_gaps": [],
+  "executive_summary": {
+    "frontier_overview": "Analysis failed during processing",
+    "key_insights": [
+      "Error occurred during analysis"
+    ],
+    "research_priorities": [],
+    "investment_opportunities": [],
+    "competitive_advantages": [],
+    "risk_assessment": "Analysis incomplete due to processing error"
+  },
+  "process_metadata": {
+    "request_id": "5ec4ab1a",
+    "total_papers_analyzed": 0,
+    "processing_time_seconds": 15.091558456420898,
+    "gaps_discovered": 0,
+    "gaps_validated": 0,
+    "gaps_eliminated": 0,
+    "search_queries_executed": 0,
+    "validation_attempts": 0,
+    "seed_paper_url": "https://bmcecolevol.biomedcentral.com/counter/pdf/10.1186/s12862-024-02309-z.pdf",
+    "analysis_date": "2025-07-26 18:33:40.075175",
+    "frontier_stats": {
+      "frontier_expansions": 0,
+      "research_domains_explored": 0,
+      "cross_domain_connections": 0,
+      "breakthrough_potential_score": 5.0,
+      "research_velocity": 0.0,
+      "gap_discovery_rate": 0.0,
+      "elimination_effectiveness": 0.0,
+      "frontier_coverage": 0.0
+    },
+    "research_landscape": {
+      "dominant_research_areas": [],
+      "emerging_trends": [],
+      "research_clusters": {},
+      "interdisciplinary_bridges": [],
+      "hottest_research_areas": []
+    },
+    "avg_paper_analysis_time": 0.0,
+    "successful_paper_extractions": 0,
+    "failed_extractions": 1,
+    "gemini_api_calls": 0,
+    "llm_tokens_processed": 0,
+    "ai_confidence_score": 0.0,
+    "citation_potential_score": 0.0,
+    "novelty_index": 0.0,
+    "impact_factor_projection": 0.0
+  },
+  "research_intelligence": {
+    "eliminated_gaps": [],
+    "research_momentum": {},
+    "emerging_collaborations": [],
+    "technology_readiness": {},
+    "patent_landscape": {},
+    "funding_trends": {}
+  },
+  "timestamp": "2025-07-26 18:33:40.075202",
+  "analysis_version": "2.0",
+  "ai_models_used": [
+    "gemini-2.5-flash"
+  ],
+  "visualization_data": {},
+  "quality_metrics": {},
+  "next_steps": []
+}

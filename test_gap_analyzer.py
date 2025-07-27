@@ -83,8 +83,8 @@ async def test_gap_analyzer():
         result = await orchestrator.analyze_research_gaps_from_text(
             paper_text=SAMPLE_PAPER_TEXT,
             paper_id="sample_nlp_survey",
-            max_papers=5,  # Keep small for testing
-            validation_threshold=1  # Reduce for faster testing
+            max_papers=8,  # Increased for better gap discovery
+            validation_threshold=3  # More reasonable - gaps need 3 validation attempts to be eliminated
         )
         
         print(f"✅ Analysis completed successfully!")
