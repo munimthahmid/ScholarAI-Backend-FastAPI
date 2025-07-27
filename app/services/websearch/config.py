@@ -13,16 +13,16 @@ import app.core.config  # Ensure .env variables are loaded
 class SearchConfig:
     """Configuration for paper search operations"""
 
-    papers_per_source: int = 5  # Increased from 2 to better utilize all 13 sources
-    max_search_rounds: int = 2
-    target_batch_size: int = 10
+    papers_per_source: int = 2  # Reduced for faster testing  
+    max_search_rounds: int = 1  # Single round for testing
+    target_batch_size: int = 5
     enable_ai_refinement: bool = True
     recent_years_filter: int = 5  # Search papers from last N years
 
     # Rate limiting settings
     retry_on_rate_limit: bool = True
-    max_rate_limit_retries: int = 3  # Increased from 2 for better resilience
-    rate_limit_backoff_seconds: int = 30  # Reduced from default 60s
+    max_rate_limit_retries: int = 1  # Minimal retries for testing
+    rate_limit_backoff_seconds: int = 2  # Very short backoff for testing
 
 
 @dataclass
@@ -30,7 +30,7 @@ class AIConfig:
     """Configuration for AI-powered search refinement"""
 
     api_key: Optional[str] = None
-    model_name: str = "gemini-2.0-flash-lite"
+    model_name: str = "gemini-2.5-flash"
     max_refined_queries: int = 3
     context_papers_count: int = 5
 
