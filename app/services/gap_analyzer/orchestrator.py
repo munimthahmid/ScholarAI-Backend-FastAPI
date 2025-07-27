@@ -115,11 +115,38 @@ class GapAnalysisOrchestrator:
             
         except Exception as e:
             logger.error(f"Gap analysis {request_id} failed: {str(e)}")
-            # Return error response
+            # Return complete error response with all required fields
+            frontier_stats = ResearchFrontierStats(
+                frontier_expansions=0,
+                research_domains_explored=0,
+                cross_domain_connections=0,
+                breakthrough_potential_score=5.0,
+                research_velocity=0.0,
+                gap_discovery_rate=0.0,
+                elimination_effectiveness=0.0,
+                frontier_coverage=0.0
+            )
+            
+            research_landscape = ResearchLandscape(
+                dominant_research_areas=[],
+                emerging_trends=[],
+                research_clusters={},
+                interdisciplinary_bridges=[],
+                hottest_research_areas=[]
+            )
+            
             return GapAnalysisResponse(
                 request_id=request_id,
                 seed_paper_url=request.url,
                 validated_gaps=[],
+                executive_summary=ExecutiveSummary(
+                    frontier_overview="Analysis failed during processing",
+                    key_insights=["Error occurred during analysis"],
+                    research_priorities=[],
+                    investment_opportunities=[],
+                    competitive_advantages=[],
+                    risk_assessment="Analysis incomplete due to processing error"
+                ),
                 process_metadata=ProcessMetadata(
                     request_id=request_id,
                     total_papers_analyzed=len(self.analyzed_papers),
@@ -129,7 +156,26 @@ class GapAnalysisOrchestrator:
                     gaps_eliminated=0,
                     search_queries_executed=0,
                     validation_attempts=0,
-                    seed_paper_url=request.url
+                    seed_paper_url=request.url,
+                    frontier_stats=frontier_stats,
+                    research_landscape=research_landscape,
+                    avg_paper_analysis_time=0.0,
+                    successful_paper_extractions=0,
+                    failed_extractions=1,
+                    gemini_api_calls=0,
+                    llm_tokens_processed=0,
+                    ai_confidence_score=0.0,
+                    citation_potential_score=0.0,
+                    novelty_index=0.0,
+                    impact_factor_projection=0.0
+                ),
+                research_intelligence=ResearchIntelligence(
+                    eliminated_gaps=[],
+                    research_momentum={},
+                    emerging_collaborations=[],
+                    technology_readiness={},
+                    patent_landscape={},
+                    funding_trends={}
                 )
             )
 
@@ -323,20 +369,10 @@ class GapAnalysisOrchestrator:
                             self.analyzed_papers_set.add(paper_url)
                             papers_analyzed += 1
                             
-                            # Step 4a: Check if this paper solves the current gap
-                            logger.info(f"🔬 VALIDATION CHECK: Testing gap against paper '{paper_analysis.title[:60]}...'")
-                            is_gap_solved = await self.gap_validator.validate_gap_against_papers(
-                                current_gap, [paper_analysis]
-                            )
-                            logger.info(f"🔬 VALIDATION RESULT: Gap solved = {is_gap_solved}")
-                            if is_gap_solved:
-                                if current_gap in self.potential_gaps_db:
-                                    self.potential_gaps_db.remove(current_gap)
-                                    self.stats["gaps_eliminated"] += 1
-                                    logger.info(f"   ✅ GAP ELIMINATED: {current_gap.description[:50]}...")
-                                else:
-                                    logger.warning(f"   ⚠️ Gap marked as solved but not in gaps DB!")
-                                break  # Gap solved, no need to analyze more papers for this gap
+                            # Step 4a: Skip immediate validation - save for Phase 3
+                            # Note: Immediate validation was too aggressive and eliminated valid gaps
+                            # All validation now happens in dedicated Phase 3 for better accuracy
+                            logger.info(f"📊 PAPER ANALYZED: '{paper_analysis.title[:60]}...' - validation deferred to Phase 3")
                             
                             # Step 4b: Extract new gaps from this paper (FRONTIER EXPANSION)
                             gaps_before = len(self.potential_gaps_db)
@@ -361,12 +397,8 @@ class GapAnalysisOrchestrator:
                 logger.error(f"Error exploring gap {gaps_processed}: {str(e)}")
                 continue
         
-        # FORCED ELIMINATION FOR TESTING - Eliminate at least 1 gap if none eliminated
-        if self.stats["gaps_eliminated"] == 0 and len(self.potential_gaps_db) > 1:
-            # Force eliminate the first gap for testing purposes
-            eliminated_gap = self.potential_gaps_db.pop(0)
-            self.stats["gaps_eliminated"] += 1
-            logger.info(f"🔨 FORCED ELIMINATION FOR TESTING: {eliminated_gap.description[:50]}...")
+        # Remove forced elimination - let natural validation work
+        logger.info(f"✅ Natural gap elimination completed - {self.stats['gaps_eliminated']} gaps eliminated through validation")
         
         logger.info(f"🏁 Frontier expansion complete!")
         logger.info(f"   📊 Papers Analyzed: {papers_analyzed}")

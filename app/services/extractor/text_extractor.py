@@ -188,7 +188,7 @@ class TextExtractorAgent:
             raise
 
     async def _extract_with_pypdf2(self, pdf_content: bytes) -> Tuple[str, str]:
-        """Extract text using PyPDF2."""
+        """Extract text using PyPDF2 with enhanced error handling."""
         try:
             pdf_file = io.BytesIO(pdf_content)
             pdf_reader = PyPDF2.PdfReader(pdf_file)
@@ -198,7 +198,15 @@ class TextExtractorAgent:
                 try:
                     text = page.extract_text()
                     if text.strip():
-                        text_parts.append(text)
+                        # Handle encoding issues by cleaning the text
+                        cleaned_text = self._clean_extracted_text(text)
+                        if cleaned_text.strip():
+                            text_parts.append(cleaned_text)
+                except UnicodeDecodeError as e:
+                    logger.warning(
+                        f"Unicode decode error on page {page_num} using PyPDF2: {str(e)}"
+                    )
+                    continue
                 except Exception as e:
                     logger.warning(
                         f"Failed to extract text from page {page_num} using PyPDF2: {str(e)}"
@@ -264,6 +272,60 @@ class TextExtractorAgent:
         except Exception as e:
             logger.warning(f"OCR extraction failed: {str(e)}")
             return "", "OCR_failed"
+
+    def _clean_extracted_text(self, text: str) -> str:
+        """Clean extracted text to handle encoding issues and improve readability."""
+        import unicodedata
+        import re
+        
+        # Normalize Unicode characters
+        text = unicodedata.normalize('NFKD', text)
+        
+        # Replace common problematic characters
+        replacements = {
+            '\ufeff': '',  # BOM
+            '\u00a0': ' ',  # Non-breaking space
+            '\u2010': '-',  # Hyphen
+            '\u2011': '-',  # Non-breaking hyphen
+            '\u2012': '-',  # Figure dash
+            '\u2013': '-',  # En dash
+            '\u2014': '-',  # Em dash
+            '\u2015': '-',  # Horizontal bar
+            '\u2018': "'",  # Left single quotation mark
+            '\u2019': "'",  # Right single quotation mark
+            '\u201a': "'",  # Single low-9 quotation mark
+            '\u201b': "'",  # Single high-reversed-9 quotation mark
+            '\u201c': '"',  # Left double quotation mark
+            '\u201d': '"',  # Right double quotation mark
+            '\u201e': '"',  # Double low-9 quotation mark
+            '\u2026': '...', # Horizontal ellipsis
+            '\u2122': 'TM',  # Trade mark sign
+            '\u00ae': '(R)', # Registered sign
+            '\u00a9': '(C)', # Copyright sign
+        }
+        
+        for old, new in replacements.items():
+            text = text.replace(old, new)
+        
+        # Remove or replace characters that can't be encoded properly
+        text = text.encode('utf-8', errors='ignore').decode('utf-8')
+        
+        # Clean up excessive whitespace
+        text = re.sub(r'\s+', ' ', text)  # Multiple spaces to single space
+        text = re.sub(r'\n\s*\n', '\n\n', text)  # Multiple newlines to double newline
+        
+        # Remove lines that are mostly non-alphabetic (likely formatting artifacts)
+        lines = text.split('\n')
+        cleaned_lines = []
+        for line in lines:
+            line = line.strip()
+            if line:
+                # Keep line if it has reasonable amount of alphabetic characters
+                alpha_ratio = sum(1 for c in line if c.isalpha()) / len(line)
+                if alpha_ratio >= 0.3 or len(line) < 10:  # Keep short lines or lines with 30%+ letters
+                    cleaned_lines.append(line)
+        
+        return '\n'.join(cleaned_lines).strip()
 
     def _is_text_valid(self, text: str) -> bool:
         """Check if extracted text is valid and meaningful."""
