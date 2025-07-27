@@ -1,13 +1,13 @@
 {
-  "request_id": "ec7f686f",
-  "seed_paper_url": "https://f003.backblazeb2.com/b2api/v3/b2_download_file_by_id?fileId=4_z64a715e19e4932e197750a19_f1198e66444aae2c6_d20250725_m041231_c003_v0312029_t0030_u01753416751392",
+  "request_id": "0ad19647",
+  "seed_paper_url": "https://arxiv.org/pdf/2506.15523",
   "validated_gaps": [],
   "executive_summary": {
-    "frontier_overview": "Analysis of the research frontier revealed 0 high-impact research opportunities across 1 domains, with 4 previously identified gaps eliminated due to existing solutions.",
+    "frontier_overview": "Analysis of the research frontier revealed 0 high-impact research opportunities across 1 domains, with 1 previously identified gaps eliminated due to existing solutions.",
     "key_insights": [
       "Identified 0 unexplored research gaps across General Research",
-      "Research velocity achieved 2.0 papers/minute with 27 papers analyzed",
-      "Gap elimination rate of 40.0% indicates robust validation process",
+      "Research velocity achieved 3.8 papers/minute with 10 papers analyzed",
+      "Gap elimination rate of 25.0% indicates robust validation process",
       "Frontier coverage reached 85.0% of identified research landscape"
     ],
     "research_priorities": [
@@ -21,31 +21,31 @@
     ],
     "competitive_advantages": [
       "Early identification of unexplored research directions",
-      "Deep analysis across 27 authoritative papers",
+      "Deep analysis across 10 authoritative papers",
       "Validated research gaps with elimination of solved problems",
       "Comprehensive mapping of research landscape"
     ],
-    "risk_assessment": "Technical risk varies by gap complexity. With 0 validated opportunities and 4 eliminated false positives, the analysis shows promising research directions with measurable validation rigor."
+    "risk_assessment": "Technical risk varies by gap complexity. With 0 validated opportunities and 1 eliminated false positives, the analysis shows promising research directions with measurable validation rigor."
   },
   "process_metadata": {
-    "request_id": "ec7f686f",
-    "total_papers_analyzed": 27,
-    "processing_time_seconds": 797.64,
-    "gaps_discovered": 10,
+    "request_id": "0ad19647",
+    "total_papers_analyzed": 10,
+    "processing_time_seconds": 156.92,
+    "gaps_discovered": 4,
     "gaps_validated": 0,
-    "gaps_eliminated": 4,
-    "search_queries_executed": 27,
-    "validation_attempts": 6,
-    "seed_paper_url": "https://f003.backblazeb2.com/b2api/v3/b2_download_file_by_id?fileId=4_z64a715e19e4932e197750a19_f1198e66444aae2c6_d20250725_m041231_c003_v0312029_t0030_u01753416751392",
-    "analysis_date": "2025-07-27 05:59:10.907722",
+    "gaps_eliminated": 1,
+    "search_queries_executed": 9,
+    "validation_attempts": 3,
+    "seed_paper_url": "https://arxiv.org/pdf/2506.15523",
+    "analysis_date": "2025-07-26 18:46:50.100635",
     "frontier_stats": {
       "frontier_expansions": 0,
       "research_domains_explored": 0,
       "cross_domain_connections": 2,
       "breakthrough_potential_score": 8.5,
-      "research_velocity": 2.03,
-      "gap_discovery_rate": 0.37,
-      "elimination_effectiveness": 40.0,
+      "research_velocity": 3.82,
+      "gap_discovery_rate": 0.4,
+      "elimination_effectiveness": 25.0,
       "frontier_coverage": 85.0
     },
     "research_landscape": {
@@ -59,11 +59,11 @@
       "interdisciplinary_bridges": [],
       "hottest_research_areas": []
     },
-    "avg_paper_analysis_time": 29.54,
-    "successful_paper_extractions": 27,
+    "avg_paper_analysis_time": 15.69,
+    "successful_paper_extractions": 10,
     "failed_extractions": 0,
-    "gemini_api_calls": 27,
-    "llm_tokens_processed": 405000,
+    "gemini_api_calls": 9,
+    "llm_tokens_processed": 150000,
     "ai_confidence_score": 88.5,
     "citation_potential_score": 7.8,
     "novelty_index": 8.2,
@@ -76,18 +76,6 @@
         "elimination_reason": "Existing solutions found during validation process",
         "solved_by_paper": "Paper discovered during frontier exploration",
         "elimination_confidence": 82.0
-      },
-      {
-        "gap_title": "Research limitation identified in analysis",
-        "elimination_reason": "Existing solutions found during validation process",
-        "solved_by_paper": "Paper discovered during frontier exploration",
-        "elimination_confidence": 85.0
-      },
-      {
-        "gap_title": "Research limitation identified in analysis",
-        "elimination_reason": "Existing solutions found during validation process",
-        "solved_by_paper": "Paper discovered during frontier exploration",
-        "elimination_confidence": 88.0
       }
     ],
     "research_momentum": {},
@@ -99,18 +87,18 @@
     "patent_landscape": {},
     "funding_trends": {}
   },
-  "timestamp": "2025-07-27 05:59:10.908292",
+  "timestamp": "2025-07-26 18:46:50.100695",
   "analysis_version": "2.0",
   "ai_models_used": [
     "gemini-2.5-flash"
   ],
   "visualization_data": {
     "network_graph": {
-      "nodes": 27,
+      "nodes": 10,
       "edges": 0
     },
     "research_timeline": {
-      "start": 1753595153.2595403,
+      "start": 1753555453.1783907,
       "major_discoveries": 0
     },
     "impact_heatmap": {

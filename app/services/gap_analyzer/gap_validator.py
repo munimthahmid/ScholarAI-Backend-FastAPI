@@ -155,34 +155,42 @@ class GapValidator:
             logger.info(f"🔍 VALIDATION RESPONSE for gap '{gap.description[:50]}...': {response_text[:200]}...")
             logger.info(f"🔍 FULL VALIDATION RESPONSE: {response_text}")
             
-            # Parse response - MORE AGGRESSIVE ELIMINATION
+            # Parse response - BALANCED ELIMINATION (smart validation)
             response_upper = response_text.upper()
             
-            # Check for explicit SOLVED keywords
+            # Eliminate if SOLVED with reasonable evidence
             if "SOLVED" in response_upper:
-                logger.info(f"✅ GAP ELIMINATED - SOLVED: {gap.description[:50]}...")
-                return True
-                
-            # Check for PARTIALLY_ADDRESSED but treat high confidence as solved
+                # Require at least one piece of supporting evidence
+                if any(evidence in response_upper for evidence in [
+                    "DIRECTLY ADDRESSES", "PROVIDES A SOLUTION", "WORKING SOLUTION",
+                    "DEMONSTRATES IMPROVEMENT", "QUANTITATIVE EVIDENCE", "MEASURABLE",
+                    "ACHIEVES", "RECENT BREAKTHROUGH", "SIGNIFICANT PROGRESS"
+                ]):
+                    logger.info(f"✅ GAP ELIMINATED - SOLVED WITH EVIDENCE: {gap.description[:50]}...")
+                    return True
+                else:
+                    logger.info(f"⚠️ GAP MARKED SOLVED BUT WEAK EVIDENCE - KEEPING: {gap.description[:50]}...")
+                    return False
+                    
+            # Eliminate if PARTIALLY_ADDRESSED with high confidence indicators
             elif "PARTIALLY_ADDRESSED" in response_upper:
-                # Look for confidence indicators suggesting it's mostly solved
-                if any(phrase in response_upper for phrase in [
-                    "SIGNIFICANT PROGRESS", "SUBSTANTIALLY ADDRESSED", "LARGELY SOLVED",
-                    "MOSTLY RESOLVED", "NEARLY COMPLETE", "95%", "90%", "BREAKTHROUGH"
+                # Only eliminate if substantially addressed (80%+ solved)
+                if any(high_confidence in response_upper for high_confidence in [
+                    "SUBSTANTIALLY ADDRESSED", "LARGELY SOLVED", "MOSTLY RESOLVED",
+                    "NEAR COMPLETE", "80%", "85%", "90%", "95%", "ALMOST SOLVED"
                 ]):
                     logger.info(f"✅ GAP ELIMINATED - SUBSTANTIALLY ADDRESSED: {gap.description[:50]}...")
                     return True
                 else:
-                    logger.info(f"⚡ GAP PARTIALLY ADDRESSED: {gap.description[:50]}...")
+                    logger.info(f"⚡ GAP PARTIALLY ADDRESSED - KEEPING: {gap.description[:50]}...")
                     return False
                     
-            # Check for solution indicators even without explicit keywords
-            elif any(phrase in response_upper for phrase in [
-                "ADDRESSES THE EXACT PROBLEM", "PROVIDES A WORKING SOLUTION", 
-                "DEMONSTRATES MEASURABLE IMPROVEMENT", "QUANTITATIVE EVIDENCE",
-                "RECENT BREAKTHROUGH", "ACHIEVES", "SOLVES THE PROBLEM"
+            # Check for strong solution indicators without explicit keywords
+            elif any(strong_solution in response_upper for strong_solution in [
+                "COMPLETE SOLUTION", "FULLY ADDRESSES", "RECENT BREAKTHROUGH SOLVES",
+                "DEFINITIVELY SOLVES", "COMPREHENSIVE SOLUTION"
             ]):
-                logger.info(f"✅ GAP ELIMINATED - SOLUTION FOUND: {gap.description[:50]}...")
+                logger.info(f"✅ GAP ELIMINATED - STRONG SOLUTION INDICATORS: {gap.description[:50]}...")
                 return True
             else:
                 logger.info(f"🔄 GAP REMAINS VALID: {gap.description[:50]}...")

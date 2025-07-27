@@ -236,10 +236,12 @@ async def gap_analysis_health():
             "max_concurrent_jobs": background_processor.max_concurrent_jobs,
             "total_jobs": len(background_processor.jobs),
             "results_directory": str(background_processor.results_dir),
+            "jobs_directory": str(background_processor.jobs_dir),
             "features": [
                 "Async background processing",
                 "Job status tracking", 
                 "Result persistence",
+                "Persistent job status storage",
                 "Multi-omics gap analysis",
                 "Bioinformatics support"
             ]
@@ -286,6 +288,8 @@ async def cancel_job(job_id: str):
             job.status = JobStatus.FAILED
             job.error_message = "Job cancelled by user"
             job.progress_message = "Job cancelled"
+            # Save cancelled status to persistent storage
+            background_processor._save_job_status(job_id)
         
         logger.info(f"🚫 Gap analysis job {job_id} cancelled")
         
