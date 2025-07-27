@@ -50,3 +50,6 @@ build/
 # Optional: if using Docker
 *.pid
 *.sock
+venv/
+venv
+venv/*
