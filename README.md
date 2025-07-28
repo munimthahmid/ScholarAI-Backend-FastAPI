@@ -4,68 +4,86 @@ Backend for the ScholarAI research assistant. This project uses FastAPI and Poet
 
 ## Prerequisites
 
-- Python (version 3.10 or higher recommended, as per `pyproject.toml`)
+- Python 3.10+ (as per `pyproject.toml`)
 - Poetry (Python dependency manager)
+- Docker & Docker Compose (for containerized setup)
 
-## Getting Started
+## Quick Start
 
-1.  **Clone the repository:**
+### Option 1: Local Development
 
-    ```bash
-    git clone <your-repository-url>
-    cd ScholarAI-Backend-FastAPI
-    ```
+1. **Install dependencies:**
+   ```bash
+   poetry install
+   ```
 
-2.  **Install dependencies:**
-    Poetry will create a virtual environment and install all necessary packages.
+2. **Configure environment:**
+   ```bash
+   cp env.example .env
+   # Edit .env with your API keys and settings
+   ```
 
-    ```bash
-    poetry install
-    ```
+3. **Run the application:**
+   ```bash
+   poetry run uvicorn app.main:app --reload --port 8000
+   ```
 
-3.  **Environment Configuration:**
-    Copy the example environment file and configure it:
+   Server will be available at `http://localhost:8000`
 
-    ```bash
-    cp env.example .env
-    ```
+### Option 2: Docker Setup
 
-    The `.env` file should include (at minimum):
-    ```bash
-    UNPAYWALL_EMAIL=your.email@example.com
-    ```
+1. **Configure environment:**
+   ```bash
+   cp env.example .env
+   # Edit .env with your API keys and settings
+   ```
 
-4.  **Run the application:**
-    This command starts the FastAPI development server using Uvicorn. The `--reload` flag enables auto-reloading on code changes.
+2. **Start with Docker:**
+   ```bash
+   # Ensure Docker network exists
+   docker network create docker_scholar-network
+   
+   # Start the application
+   ./scripts/docker.sh start
+   ```
 
-    ```bash
-    poetry run uvicorn app.main:app --reload --port 8000
-    ```
+   Server will be available at `http://localhost:8000`
 
-    You should see output indicating the server is running, typically on `http://127.0.0.1:8000`.
+## Environment Configuration
 
-## Academic API Configuration
-
-### Unpaywall
-The Unpaywall API provides open-access status for academic papers. Set up:
+Copy `env.example` to `.env` and configure:
 
 ```bash
-# Add to your .env file
+# Required
 UNPAYWALL_EMAIL=your.email@example.com
+
+# Optional (for enhanced features)
+CORE_API_KEY=your_core_api_key
+RABBITMQ_USER=your_rabbitmq_user
+RABBITMQ_PASSWORD=your_rabbitmq_password
+B2_KEY_ID=your_b2_key_id
+B2_APPLICATION_KEY=your_b2_application_key
+B2_BUCKET_NAME=your_b2_bucket_name
+LOG_LEVEL=INFO
 ```
 
-**Features:**
-- DOI-based paper lookup
-- Open-access status detection
-- PDF URL retrieval
-- Full-text search capabilities
-- Bulk DOI checking
+## Available Scripts
 
-**Test the client:**
+- `./scripts/docker.sh start` - Start the application with Docker
+- `./scripts/docker.sh stop` - Stop the application
+- `./scripts/docker.sh rebuild` - Rebuild and restart
+- `./scripts/azure-setup.sh` - Set up Azure infrastructure
+
+## Testing
+
 ```bash
+# Test Unpaywall client
 poetry run python test_unpaywall.py
+
+# Run all tests
+poetry run pytest
 ```
 
 ## Project Structure
 
-For details on the project structure, please refer to `docs/3_Code_Structure.md`.
+For detailed project structure, see `docs/3_Code_Structure.md`.
