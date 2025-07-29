@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Import our database components
-from app.db.database import create_tables, test_connection, SessionLocal, GapAnalysisJob, GapAnalysisResult
+from db.database import create_tables, test_connection, SessionLocal, GapAnalysisJob, GapAnalysisResult
 
 
 def load_json_file(file_path: Path) -> dict:
@@ -37,8 +37,8 @@ def migrate_existing_data():
     """Migrate existing JSON files to database."""
     logger.info("🔄 Starting migration of existing gap analysis data...")
     
-    # Paths to JSON directories
-    project_root = Path(__file__).parent
+    # Paths to JSON directories (go up one level from app/ to project root)
+    project_root = Path(__file__).parent.parent
     jobs_dir = project_root / "gap_analysis_jobs"
     results_dir = project_root / "gap_analysis_results"
     
