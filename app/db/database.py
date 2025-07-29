@@ -3,6 +3,7 @@ Database connection and models for gap analysis persistence.
 """
 
 import os
+from urllib.parse import quote_plus
 from sqlalchemy import create_engine, Column, String, DateTime, Text, UUID, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -18,8 +19,8 @@ DB_NAME = "scholarai_core"
 DB_USER = "scholar" 
 DB_PASSWORD = "FindSolace@0"
 
-# Create database URL
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+# Create database URL with URL-encoded password
+DATABASE_URL = f"postgresql://{DB_USER}:{quote_plus(DB_PASSWORD)}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 # Create SQLAlchemy engine
 engine = create_engine(DATABASE_URL)
