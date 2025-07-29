@@ -7,6 +7,7 @@ import asyncio
 import logging
 import json
 import time
+import os
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 from uuid import uuid4
@@ -76,10 +77,22 @@ class GapAnalysisBackgroundProcessor:
     async def force_reload_jobs(self):
         """DEBUG: Show statistics about jobs on disk (no longer needed for functionality)."""
         try:
+            logger.info(f"🔧 [RELOAD] Starting force reload jobs")
+            logger.info(f"📂 [RELOAD] Jobs directory: {self.jobs_dir.absolute()}")
+            logger.info(f"📂 [RELOAD] Results directory: {self.results_dir.absolute()}")
+            logger.info(f"📂 [RELOAD] Jobs dir exists: {self.jobs_dir.exists()}")
+            logger.info(f"📂 [RELOAD] Results dir exists: {self.results_dir.exists()}")
+            
             job_files = list(self.jobs_dir.glob("job_*.json"))
             result_files = list(self.results_dir.glob("gap_analysis_*.json"))
             
-            logger.info(f"🔧 Disk statistics: {len(job_files)} job files, {len(result_files)} result files")
+            logger.info(f"🔧 [RELOAD] Found {len(job_files)} job files, {len(result_files)} result files")
+            
+            # List some file names for debugging
+            if job_files:
+                logger.info(f"📄 [RELOAD] Sample job files: {[f.name for f in job_files[:3]]}")
+            if result_files:
+                logger.info(f"📄 [RELOAD] Sample result files: {[f.name for f in result_files[:3]]}")
             
             # Count jobs by status
             status_counts = {}
@@ -91,6 +104,8 @@ class GapAnalysisBackgroundProcessor:
                     status_counts[status] = status_counts.get(status, 0) + 1
                 except:
                     status_counts["corrupted"] = status_counts.get("corrupted", 0) + 1
+            
+            logger.info(f"📊 [RELOAD] Status breakdown: {status_counts}")
             
             return {
                 "status": "completed",
@@ -108,6 +123,11 @@ class GapAnalysisBackgroundProcessor:
         """Save job status directly to persistent storage."""
         try:
             job_file = self.jobs_dir / f"job_{job.job_id}.json"
+            
+            logger.info(f"💾 [SAVE] Attempting to save job {job.job_id}")
+            logger.info(f"📂 [SAVE] Target file: {job_file.absolute()}")
+            logger.info(f"📂 [SAVE] Directory exists: {self.jobs_dir.exists()}")
+            logger.info(f"📂 [SAVE] Directory writable: {os.access(self.jobs_dir, os.W_OK)}")
             
             job_data = {
                 "job_id": job.job_id,
@@ -132,9 +152,15 @@ class GapAnalysisBackgroundProcessor:
             
             with open(job_file, 'w') as f:
                 json.dump(job_data, f, indent=2, default=str)
+            
+            logger.info(f"✅ [SAVE] Job {job.job_id} saved successfully")
+            logger.info(f"📄 [SAVE] File size: {job_file.stat().st_size} bytes")
+            logger.info(f"📄 [SAVE] File exists after save: {job_file.exists()}")
                 
         except Exception as e:
-            logger.error(f"Failed to save job status for {job.job_id}: {str(e)}")
+            logger.error(f"❌ [SAVE] Failed to save job status for {job.job_id}: {str(e)}")
+            logger.error(f"❌ [SAVE] Exception type: {type(e).__name__}")
+            raise
 
     def _save_job_status(self, job_id: str):
         """Save job status to persistent storage (for running jobs)."""
@@ -171,8 +197,18 @@ class GapAnalysisBackgroundProcessor:
         job_id = str(uuid4())
         job_info = JobInfo(job_id, request)
         
+        logger.info(f"🚀 [SUBMIT] Starting job submission for {job_id}")
+        logger.info(f"📄 [SUBMIT] URL: {request.url}")
+        logger.info(f"📂 [SUBMIT] Jobs directory: {self.jobs_dir.absolute()}")
+        logger.info(f"📂 [SUBMIT] Results directory: {self.results_dir.absolute()}")
+        
         # Save job to disk immediately
-        self._save_job_status_direct(job_info)
+        try:
+            self._save_job_status_direct(job_info)
+            logger.info(f"✅ [SUBMIT] Job {job_id} saved to disk successfully")
+        except Exception as e:
+            logger.error(f"❌ [SUBMIT] Failed to save job {job_id} to disk: {str(e)}")
+            raise
         
         logger.info(f"🚀 Gap analysis job {job_id} submitted for URL: {request.url}")
         
@@ -193,11 +229,20 @@ class GapAnalysisBackgroundProcessor:
         """
         try:
             job_file = self.jobs_dir / f"job_{job_id}.json"
+            
+            logger.info(f"🔍 [GET_STATUS] Looking for job {job_id}")
+            logger.info(f"📂 [GET_STATUS] Target file: {job_file.absolute()}")
+            logger.info(f"📄 [GET_STATUS] File exists: {job_file.exists()}")
+            
             if not job_file.exists():
+                logger.warning(f"❌ [GET_STATUS] Job file not found for {job_id}")
                 return None
                 
             with open(job_file, 'r') as f:
                 job_data = json.load(f)
+            
+            logger.info(f"✅ [GET_STATUS] Job data loaded successfully for {job_id}")
+            logger.info(f"📄 [GET_STATUS] Job status: {job_data.get('status', 'unknown')}")
             
             # CRITICAL FIX: Handle backwards compatibility for missing analysis_mode
             if "request" in job_data and "analysis_mode" not in job_data["request"]:
@@ -283,8 +328,16 @@ class GapAnalysisBackgroundProcessor:
             List of job status information
         """
         try:
+            logger.info(f"📋 [LIST_JOBS] Starting to list jobs")
+            logger.info(f"📂 [LIST_JOBS] Jobs directory: {self.jobs_dir.absolute()}")
+            logger.info(f"📂 [LIST_JOBS] Directory exists: {self.jobs_dir.exists()}")
+            
             # Get all job files from disk
             job_files = list(self.jobs_dir.glob("job_*.json"))
+            
+            logger.info(f"📄 [LIST_JOBS] Found {len(job_files)} job files")
+            for i, job_file in enumerate(job_files[:5]):  # Log first 5 files
+                logger.info(f"📄 [LIST_JOBS] File {i+1}: {job_file.name}")
             
             # Read job data and sort by creation time
             jobs_data = []
