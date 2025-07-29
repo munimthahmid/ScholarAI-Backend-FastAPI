@@ -351,13 +351,25 @@ async def cancel_job(job_id: str):
             )
         
         # Mark job as failed to effectively cancel it
-        if job_id in background_processor.jobs:
-            job = background_processor.jobs[job_id]
+        if job_id in background_processor.running_jobs_tracker:
+            job = background_processor.running_jobs_tracker[job_id]
             job.status = JobStatus.FAILED
             job.error_message = "Job cancelled by user"
             job.progress_message = "Job cancelled"
             # Save cancelled status to persistent storage
             background_processor._save_job_status(job_id)
+        else:
+            # Job is not running, just update the file directly
+            job_file = background_processor.jobs_dir / f"job_{job_id}.json"
+            if job_file.exists():
+                import json
+                with open(job_file, 'r') as f:
+                    job_data = json.load(f)
+                job_data['status'] = 'failed'
+                job_data['error_message'] = 'Job cancelled by user'
+                job_data['progress_message'] = 'Job cancelled'
+                with open(job_file, 'w') as f:
+                    json.dump(job_data, f, indent=2)
         
         logger.info(f"🚫 Gap analysis job {job_id} cancelled")
         

@@ -242,13 +242,17 @@ async def gap_analysis_health():
     Returns service status and operational metrics.
     """
     try:
+        # Count total jobs from disk
+        job_files = list(background_processor.jobs_dir.glob("job_*.json"))
+        total_jobs = len(job_files)
+        
         return {
             "status": "healthy",
             "service": "Autonomous Research Frontier Agent",
             "version": "2.0.0",
             "running_jobs": background_processor.running_jobs,
             "max_concurrent_jobs": background_processor.max_concurrent_jobs,
-            "total_jobs": len(background_processor.jobs),
+            "total_jobs": total_jobs,
             "results_directory": str(background_processor.results_dir),
             "jobs_directory": str(background_processor.jobs_dir),
             "features": [
@@ -297,13 +301,25 @@ async def cancel_job(job_id: str):
             )
         
         # Mark job as failed to effectively cancel it
-        if job_id in background_processor.jobs:
-            job = background_processor.jobs[job_id]
+        if job_id in background_processor.running_jobs_tracker:
+            job = background_processor.running_jobs_tracker[job_id]
             job.status = JobStatus.FAILED
             job.error_message = "Job cancelled by user"
             job.progress_message = "Job cancelled"
             # Save cancelled status to persistent storage
             background_processor._save_job_status(job_id)
+        else:
+            # Job is not running, just update the file directly
+            job_file = background_processor.jobs_dir / f"job_{job_id}.json"
+            if job_file.exists():
+                import json
+                with open(job_file, 'r') as f:
+                    job_data = json.load(f)
+                job_data['status'] = 'failed'
+                job_data['error_message'] = 'Job cancelled by user'
+                job_data['progress_message'] = 'Job cancelled'
+                with open(job_file, 'w') as f:
+                    json.dump(job_data, f, indent=2)
         
         logger.info(f"🚫 Gap analysis job {job_id} cancelled")
         
