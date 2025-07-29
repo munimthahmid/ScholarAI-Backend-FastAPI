@@ -197,7 +197,8 @@ class GapValidator:
                 return False
             
         except Exception as e:
-            logger.error(f"Error validating gap: {str(e)}")
+            logger.error(f"Error validating gap (likely Gemini API failure): {str(e)}")
+            logger.warning("🔧 Gap validation failed - keeping gap to maintain processing continuity")
             return False  # Conservative approach - keep gaps if validation fails
     
     async def generate_validation_queries(self, gap: ResearchGap) -> List[str]:
@@ -304,7 +305,8 @@ class GapValidator:
             return queries[:3]
             
         except Exception as e:
-            logger.error(f"Error generating validation queries: {str(e)}")
+            logger.error(f"Error generating validation queries (likely Gemini API failure): {str(e)}")
+            logger.warning("🔧 Using fallback query generation to maintain processing continuity")
             # Fallback queries
             gap_terms = gap.description.split()[:5]
             base_query = " ".join(gap_terms)

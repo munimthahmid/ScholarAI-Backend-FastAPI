@@ -95,8 +95,11 @@ async def submit_gap_analysis(request: GapAnalysisSubmissionRequest):
         # Submit job for background processing
         job_id = await background_processor.submit_job(gap_request)
         
-        # Estimate processing time based on parameters
-        estimated_minutes = max(3, (gap_request.max_papers * 0.8) + 2)
+        # Estimate processing time based on parameters and analysis mode
+        if gap_request.analysis_mode == "light":
+            estimated_minutes = 2  # Hard 2-minute limit for light mode
+        else:
+            estimated_minutes = max(5, (gap_request.max_papers * 0.8) + 3)  # Deep mode estimation
         
         logger.info(f"🎯 Gap analysis job {job_id} submitted for {request.url} (mode: {gap_request.analysis_mode}, papers: {gap_request.max_papers})")
         
