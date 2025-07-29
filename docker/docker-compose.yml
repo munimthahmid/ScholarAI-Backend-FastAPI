@@ -19,6 +19,8 @@ services:
       - ../.env
     volumes:
       - ../app:/app/app
+      - ../gap_analysis_jobs:/app/gap_analysis_jobs
+      - ../gap_analysis_results:/app/gap_analysis_results
     networks:
       - scholar_network_alias
     restart: unless-stopped
