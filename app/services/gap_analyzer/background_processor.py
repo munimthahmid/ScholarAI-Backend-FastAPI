@@ -191,6 +191,10 @@ class GapAnalysisBackgroundProcessor:
             with open(job_file, 'r') as f:
                 job_data = json.load(f)
             
+            # CRITICAL FIX: Handle backwards compatibility for missing analysis_mode
+            if "request" in job_data and "analysis_mode" not in job_data["request"]:
+                job_data["request"]["analysis_mode"] = "deep"  # Default for older jobs
+            
             # Return the status info directly from file
             status_info = {
                 "job_id": job_data["job_id"],
@@ -281,12 +285,18 @@ class GapAnalysisBackgroundProcessor:
                     with open(job_file, 'r') as f:
                         job_data = json.load(f)
                     
+                    # CRITICAL FIX: Handle backwards compatibility for missing analysis_mode
+                    if "request" in job_data and "analysis_mode" not in job_data["request"]:
+                        job_data["request"]["analysis_mode"] = "deep"  # Default for older jobs
+                        logger.info(f"🔄 Added default analysis_mode to job {job_data.get('job_id', 'unknown')} for backwards compatibility")
+                    
                     # Add created_at as datetime for sorting
                     job_data['created_at_dt'] = datetime.fromisoformat(job_data['created_at'])
                     jobs_data.append(job_data)
                     
                 except Exception as e:
-                    logger.warning(f"Failed to read job file {job_file}: {str(e)}")
+                    logger.error(f"❌ Failed to read job file {job_file}: {str(e)}")
+                    logger.error(f"   Job file content: {job_file.read_text()[:500]}...")
                     continue
             
             # Sort by creation time, most recent first
