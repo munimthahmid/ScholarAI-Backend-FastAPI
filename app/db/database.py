@@ -15,7 +15,7 @@ import uuid
 # Hardcoded database configuration for deployment
 DB_HOST = "core-db"  # Docker container name
 DB_PORT = "5432"     # Internal container port
-DB_NAME = "scholarai_core"
+DB_NAME = "coreDB"
 DB_USER = "scholar" 
 DB_PASSWORD = "FindSolace@0"
 
