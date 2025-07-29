@@ -280,14 +280,18 @@ async def gap_analysis_health():
         Service health information
     """
     try:
+        # Count jobs on disk
+        job_files = list(background_processor.jobs_dir.glob("job_*.json"))
+        
         return {
             "status": "healthy",
             "service": "gap_analysis",
             "running_jobs": background_processor.running_jobs,
             "max_concurrent_jobs": background_processor.max_concurrent_jobs,
-            "total_jobs": len(background_processor.jobs),
+            "total_jobs_on_disk": len(job_files),
             "results_directory": str(background_processor.results_dir),
-            "jobs_directory": str(background_processor.jobs_dir)
+            "jobs_directory": str(background_processor.jobs_dir),
+            "architecture": "disk-based (no memory loading needed)"
         }
         
     except Exception as e:
@@ -296,6 +300,29 @@ async def gap_analysis_health():
             "status": "unhealthy",
             "error": str(e)
         }
+
+@router.post("/debug/reload-jobs")
+async def force_reload_jobs():
+    """
+    DEBUG ENDPOINT: Force reload all jobs from disk.
+    
+    This endpoint is useful for debugging job persistence issues.
+    Use when jobs are missing from memory but exist on disk.
+    
+    Returns:
+        Reload status and statistics
+    """
+    try:
+        result = await background_processor.force_reload_jobs()
+        logger.info(f"🔧 Jobs force reloaded via API: {result}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Failed to force reload jobs: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to reload jobs: {str(e)}"
+        )
 
 @router.delete("/job/{job_id}")
 async def cancel_job(job_id: str):
