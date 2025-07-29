@@ -10,12 +10,13 @@ import time
 import os
 from datetime import datetime
 from typing import Dict, Any, Optional, List
-from uuid import uuid4
+from uuid import uuid4, UUID
 from pathlib import Path
 from enum import Enum
 
 from .orchestrator import GapAnalysisOrchestrator
 from .models import GapAnalysisRequest
+from ...db.database import SessionLocal, GapAnalysisJob, GapAnalysisResult
 
 logger = logging.getLogger(__name__)
 
@@ -39,29 +40,15 @@ class JobInfo:
 
 class GapAnalysisBackgroundProcessor:
     """
-    Background processor for gap analysis jobs with status tracking.
+    Background processor for gap analysis jobs with database persistence.
     """
     
     def __init__(self):
         self.orchestrator = GapAnalysisOrchestrator()
-        # Only keep running jobs in memory - everything else is read from disk
+        # Only keep running jobs in memory - everything else is in database
         self.running_jobs_tracker: Dict[str, JobInfo] = {}
         
-        # Create directories for persistent storage using absolute paths
-        # The folders are at the same level as the 'app' folder, not inside it
-        # From: app/services/gap_analyzer/background_processor.py
-        # Go up to: app/services/gap_analyzer -> app/services -> app -> project_root
-        project_root = Path(__file__).parent.parent.parent.parent  # Go up to project root
-        self.results_dir = project_root / "gap_analysis_results"
-        self.jobs_dir = project_root / "gap_analysis_jobs"
-        
-        # Create directories if they don't exist
-        self.results_dir.mkdir(exist_ok=True)
-        self.jobs_dir.mkdir(exist_ok=True)
-        
-        logger.info(f"📂 Using absolute paths:")
-        logger.info(f"   Jobs directory: {self.jobs_dir.absolute()}")
-        logger.info(f"   Results directory: {self.results_dir.absolute()}")
+        logger.info(f"📂 Using PostgreSQL database for gap analysis persistence")
         
         # Track running jobs to prevent overload
         self.max_concurrent_jobs = 2
@@ -136,14 +123,9 @@ class GapAnalysisBackgroundProcessor:
             return {"status": "error", "error": str(e)}
 
     def _save_job_status_direct(self, job: JobInfo):
-        """Save job status directly to persistent storage."""
+        """Save job status directly to database."""
         try:
-            job_file = self.jobs_dir / f"job_{job.job_id}.json"
-            
-            logger.info(f"💾 [SAVE] Attempting to save job {job.job_id}")
-            logger.info(f"📂 [SAVE] Target file: {job_file.absolute()}")
-            logger.info(f"📂 [SAVE] Directory exists: {self.jobs_dir.exists()}")
-            logger.info(f"📂 [SAVE] Directory writable: {os.access(self.jobs_dir, os.W_OK)}")
+            logger.info(f"💾 [SAVE] Attempting to save job {job.job_id} to database")
             
             job_data = {
                 "job_id": job.job_id,
@@ -166,12 +148,35 @@ class GapAnalysisBackgroundProcessor:
             if job.error_message:
                 job_data["error_message"] = job.error_message
             
-            with open(job_file, 'w') as f:
-                json.dump(job_data, f, indent=2, default=str)
-            
-            logger.info(f"✅ [SAVE] Job {job.job_id} saved successfully")
-            logger.info(f"📄 [SAVE] File size: {job_file.stat().st_size} bytes")
-            logger.info(f"📄 [SAVE] File exists after save: {job_file.exists()}")
+            db = SessionLocal()
+            try:
+                job_uuid = UUID(job.job_id)
+                
+                # Check if job already exists
+                existing_job = db.query(GapAnalysisJob).filter(GapAnalysisJob.id == job_uuid).first()
+                
+                if existing_job:
+                    # Update existing job
+                    existing_job.status = job.status.value
+                    existing_job.job_data = job_data
+                    existing_job.analysis_mode = job.request.analysis_mode
+                    logger.info(f"🔄 [SAVE] Updated existing job {job.job_id}")
+                else:
+                    # Create new job
+                    new_job = GapAnalysisJob(
+                        id=job_uuid,
+                        status=job.status.value,
+                        job_data=job_data,
+                        analysis_mode=job.request.analysis_mode
+                    )
+                    db.add(new_job)
+                    logger.info(f"➕ [SAVE] Created new job {job.job_id}")
+                
+                db.commit()
+                logger.info(f"✅ [SAVE] Job {job.job_id} saved successfully to database")
+                
+            finally:
+                db.close()
                 
         except Exception as e:
             logger.error(f"❌ [SAVE] Failed to save job status for {job.job_id}: {str(e)}")
@@ -179,7 +184,7 @@ class GapAnalysisBackgroundProcessor:
             raise
 
     def _save_job_status(self, job_id: str):
-        """Save job status to persistent storage (for running jobs)."""
+        """Save job status to database (for running jobs)."""
         try:
             if job_id in self.running_jobs_tracker:
                 job = self.running_jobs_tracker[job_id]
@@ -235,7 +240,7 @@ class GapAnalysisBackgroundProcessor:
     
     def get_job_status(self, job_id: str) -> Optional[Dict[str, Any]]:
         """
-        Get current status of a job by reading directly from disk.
+        Get current status of a job from database.
         
         Args:
             job_id: Job identifier
@@ -244,61 +249,66 @@ class GapAnalysisBackgroundProcessor:
             Job status information or None if not found
         """
         try:
-            job_file = self.jobs_dir / f"job_{job_id}.json"
-            
-            logger.info(f"🔍 [GET_STATUS] Looking for job {job_id}")
-            logger.info(f"📂 [GET_STATUS] Target file: {job_file.absolute()}")
-            logger.info(f"📄 [GET_STATUS] File exists: {job_file.exists()}")
-            
-            if not job_file.exists():
-                logger.warning(f"❌ [GET_STATUS] Job file not found for {job_id}")
-                return None
+            db = SessionLocal()
+            try:
+                # Convert string to UUID
+                job_uuid = UUID(job_id)
+                job = db.query(GapAnalysisJob).filter(GapAnalysisJob.id == job_uuid).first()
                 
-            with open(job_file, 'r') as f:
-                job_data = json.load(f)
-            
-            logger.info(f"✅ [GET_STATUS] Job data loaded successfully for {job_id}")
-            logger.info(f"📄 [GET_STATUS] Job status: {job_data.get('status', 'unknown')}")
-            
-            # CRITICAL FIX: Handle backwards compatibility for missing analysis_mode
-            if "request" in job_data and "analysis_mode" not in job_data["request"]:
-                job_data["request"]["analysis_mode"] = "deep"  # Default for older jobs
-            
-            # Return the status info directly from file
-            status_info = {
-                "job_id": job_data["job_id"],
-                "status": job_data.get("status", "pending"),
-                "created_at": job_data["created_at"],
-                "progress_message": job_data.get("progress_message", "Job queued"),
-                "url": job_data["request"]["url"]
-            }
-            
-            if job_data.get("started_at"):
-                status_info["started_at"] = job_data["started_at"]
+                if not job:
+                    logger.warning(f"❌ [GET_STATUS] Job not found in database: {job_id}")
+                    return None
                 
-            if job_data.get("completed_at"):
-                status_info["completed_at"] = job_data["completed_at"]
-                # Calculate processing time
+                logger.info(f"✅ [GET_STATUS] Job loaded from database: {job_id}")
+                logger.info(f"📄 [GET_STATUS] Job status: {job.status}")
+                
+                job_data = job.job_data
+                
+                # Handle backwards compatibility for missing analysis_mode
+                if "request" in job_data and "analysis_mode" not in job_data["request"]:
+                    job_data["request"]["analysis_mode"] = "deep"
+                
+                # Return the status info
+                status_info = {
+                    "job_id": str(job.id),
+                    "status": job.status,
+                    "created_at": job.created_at.isoformat(),
+                    "progress_message": job_data.get("progress_message", "Job queued"),
+                    "url": job_data["request"]["url"]
+                }
+                
                 if job_data.get("started_at"):
-                    started = datetime.fromisoformat(job_data["started_at"])
-                    completed = datetime.fromisoformat(job_data["completed_at"])
-                    status_info["processing_time_seconds"] = (completed - started).total_seconds()
+                    status_info["started_at"] = job_data["started_at"]
+                    
+                if job_data.get("completed_at"):
+                    status_info["completed_at"] = job_data["completed_at"]
+                    # Calculate processing time
+                    if job_data.get("started_at"):
+                        started = datetime.fromisoformat(job_data["started_at"])
+                        completed = datetime.fromisoformat(job_data["completed_at"])
+                        status_info["processing_time_seconds"] = (completed - started).total_seconds()
+                    
+                if job_data.get("error_message"):
+                    status_info["error"] = job_data["error_message"]
+                    
+                if job_data.get("result_file"):
+                    status_info["result_file"] = job_data["result_file"]
+                    
+                return status_info
                 
-            if job_data.get("error_message"):
-                status_info["error"] = job_data["error_message"]
+            finally:
+                db.close()
                 
-            if job_data.get("result_file"):
-                status_info["result_file"] = job_data["result_file"]
-                
-            return status_info
-            
+        except ValueError:
+            logger.error(f"Invalid job ID format: {job_id}")
+            return None
         except Exception as e:
-            logger.error(f"Failed to read job status from disk for {job_id}: {str(e)}")
+            logger.error(f"Failed to get job status from database for {job_id}: {str(e)}")
             return None
     
     def get_job_result(self, job_id: str) -> Optional[Dict[str, Any]]:
         """
-        Get the complete analysis result for a completed job by reading from disk.
+        Get the complete analysis result for a completed job from database.
         
         Args:
             job_id: Job identifier
@@ -307,35 +317,40 @@ class GapAnalysisBackgroundProcessor:
             Complete analysis result or None if not available
         """
         try:
-            # First check if job exists and get its status from disk
-            job_status = self.get_job_status(job_id)
-            if not job_status:
-                return None
-            
-            # Only return results for completed jobs
-            if job_status.get("status") != "completed":
-                return None
+            db = SessionLocal()
+            try:
+                # Convert string to UUID
+                job_uuid = UUID(job_id)
                 
-            result_file = job_status.get("result_file")
-            if not result_file:
-                return None
+                # First check if job exists and is completed
+                job = db.query(GapAnalysisJob).filter(GapAnalysisJob.id == job_uuid).first()
+                if not job:
+                    return None
                 
-            # Load result from disk
-            result_path = self.results_dir / result_file
-            if result_path.exists():
-                with open(result_path, 'r') as f:
-                    return json.load(f)
-            else:
-                logger.warning(f"Result file {result_file} not found for job {job_id}")
-                return None
+                if job.status != "completed":
+                    return None
                 
+                # Get the result from database
+                result = db.query(GapAnalysisResult).filter(GapAnalysisResult.job_id == job_uuid).first()
+                if result:
+                    return result.result_data
+                else:
+                    logger.warning(f"No result found in database for job {job_id}")
+                    return None
+                    
+            finally:
+                db.close()
+                
+        except ValueError:
+            logger.error(f"Invalid job ID format: {job_id}")
+            return None
         except Exception as e:
-            logger.error(f"Failed to load result for job {job_id}: {str(e)}")
+            logger.error(f"Failed to load result from database for job {job_id}: {str(e)}")
             return None
     
     def list_jobs(self, limit: int = 50) -> List[Dict[str, Any]]:
         """
-        List recent jobs with their status by reading directly from disk.
+        List recent jobs with their status from database.
         
         Args:
             limit: Maximum number of jobs to return
@@ -344,62 +359,61 @@ class GapAnalysisBackgroundProcessor:
             List of job status information
         """
         try:
-            logger.info(f"📋 [LIST_JOBS] Starting to list jobs")
-            logger.info(f"📂 [LIST_JOBS] Jobs directory: {self.jobs_dir.absolute()}")
-            logger.info(f"📂 [LIST_JOBS] Directory exists: {self.jobs_dir.exists()}")
+            logger.info(f"📋 [LIST_JOBS] Starting to list jobs from database")
             
-            # Get all job files from disk using os.listdir (more reliable than glob)
+            db = SessionLocal()
             try:
-                all_files = os.listdir(self.jobs_dir)
-                job_files = [self.jobs_dir / f for f in all_files if f.startswith("job_") and f.endswith(".json")]
-                logger.info(f"📄 [LIST_JOBS] Raw files found: {len(all_files)}")
-                logger.info(f"📄 [LIST_JOBS] Job files filtered: {len(job_files)}")
-            except OSError as e:
-                logger.error(f"❌ [LIST_JOBS] Cannot list directory {self.jobs_dir}: {str(e)}")
-                return []
-
-            logger.info("Files are: ")
-            for job_file in job_files:
-                logger.info(f"📄 [LIST_JOBS] Found job file: {job_file.name}")
-
-            logger.info(f"📄 [LIST_JOBS] Found {len(job_files)} job files")
-            for i, job_file in enumerate(job_files[:5]):  # Log first 5 files
-                logger.info(f"📄 [LIST_JOBS] File {i+1}: {job_file.name}")
-            
-            # Read job data and sort by creation time
-            jobs_data = []
-            for job_file in job_files:
-                try:
-                    with open(job_file, 'r') as f:
-                        job_data = json.load(f)
+                # Get jobs ordered by creation time, most recent first
+                jobs = db.query(GapAnalysisJob).order_by(GapAnalysisJob.created_at.desc()).limit(limit).all()
+                
+                logger.info(f"📄 [LIST_JOBS] Found {len(jobs)} jobs in database")
+                
+                result = []
+                for job in jobs:
+                    job_data = job.job_data
                     
-                    # CRITICAL FIX: Handle backwards compatibility for missing analysis_mode
+                    # Handle backwards compatibility for missing analysis_mode
                     if "request" in job_data and "analysis_mode" not in job_data["request"]:
-                        job_data["request"]["analysis_mode"] = "deep"  # Default for older jobs
-                        logger.info(f"🔄 Added default analysis_mode to job {job_data.get('job_id', 'unknown')} for backwards compatibility")
+                        job_data["request"]["analysis_mode"] = "deep"
+                        logger.info(f"🔄 Added default analysis_mode to job {job.id} for backwards compatibility")
                     
-                    # Add created_at as datetime for sorting
-                    job_data['created_at_dt'] = datetime.fromisoformat(job_data['created_at'])
-                    jobs_data.append(job_data)
+                    # Create status info
+                    status_info = {
+                        "job_id": str(job.id),
+                        "status": job.status,
+                        "created_at": job.created_at.isoformat(),
+                        "progress_message": job_data.get("progress_message", "Job queued"),
+                        "url": job_data["request"]["url"]
+                    }
                     
-                except Exception as e:
-                    logger.error(f"❌ Failed to read job file {job_file}: {str(e)}")
-                    logger.error(f"   Job file content: {job_file.read_text()[:500]}...")
-                    continue
-            
-            # Sort by creation time, most recent first
-            jobs_data.sort(key=lambda x: x['created_at_dt'], reverse=True)
-            
-            # Convert to status info format and limit results
-            result = []
-            for job_data in jobs_data[:limit]:
-                job_id = job_data['job_id']
-                status_info = self.get_job_status(job_id)
-                if status_info:
+                    if job_data.get("started_at"):
+                        status_info["started_at"] = job_data["started_at"]
+                        
+                    if job_data.get("completed_at"):
+                        status_info["completed_at"] = job_data["completed_at"]
+                        # Calculate processing time
+                        if job_data.get("started_at"):
+                            started = datetime.fromisoformat(job_data["started_at"])
+                            completed = datetime.fromisoformat(job_data["completed_at"])
+                            status_info["processing_time_seconds"] = (completed - started).total_seconds()
+                        
+                    if job_data.get("error_message"):
+                        status_info["error"] = job_data["error_message"]
+                        
+                    if job_data.get("result_file"):
+                        status_info["result_file"] = job_data["result_file"]
+                        
                     result.append(status_info)
-            
-            logger.info(f"📊 Listed {len(result)} jobs from disk (out of {len(job_files)} total)")
-            return result
+                
+                logger.info(f"📊 Listed {len(result)} jobs from database")
+                return result
+                
+            finally:
+                db.close()
+                
+        except Exception as e:
+            logger.error(f"Failed to list jobs from database: {str(e)}")
+            return []
             
         except Exception as e:
             logger.error(f"Failed to list jobs from disk: {str(e)}")
@@ -412,29 +426,30 @@ class GapAnalysisBackgroundProcessor:
         Args:
             job_id: Job identifier
         """
-        # Load job from disk
+        # Load job from database
         job_status = self.get_job_status(job_id)
         if not job_status:
-            logger.error(f"Job {job_id} not found on disk")
+            logger.error(f"Job {job_id} not found in database")
             return
             
-        # Create JobInfo for tracking running job
-        from .models import GapAnalysisRequest
-        request = GapAnalysisRequest(
-            url=job_status["url"],
-            max_papers=10,  # Will be loaded from request in job file
-            validation_threshold=2,
-            analysis_mode="deep"
-        )
-        
-        # Load full request from disk
+        # Load full request from database
         try:
-            job_file = self.jobs_dir / f"job_{job_id}.json"
-            with open(job_file, 'r') as f:
-                job_data = json.load(f)
-            request = GapAnalysisRequest(**job_data["request"])
+            db = SessionLocal()
+            try:
+                job_uuid = UUID(job_id)
+                job_record = db.query(GapAnalysisJob).filter(GapAnalysisJob.id == job_uuid).first()
+                if not job_record:
+                    logger.error(f"Job {job_id} not found in database")
+                    return
+                
+                from .models import GapAnalysisRequest
+                request = GapAnalysisRequest(**job_record.job_data["request"])
+                
+            finally:
+                db.close()
+                
         except Exception as e:
-            logger.error(f"Failed to load job request from disk: {str(e)}")
+            logger.error(f"Failed to load job request from database: {str(e)}")
             return
             
         job = JobInfo(job_id, request)
@@ -480,20 +495,39 @@ class GapAnalysisBackgroundProcessor:
             job.progress_message = "Phase 3: Finalizing analysis and generating comprehensive report..."
             self._save_job_status(job_id)
             
-            # Save result to file
-            result_filename = f"gap_analysis_{job_id}_{int(time.time())}.json"
-            result_path = self.results_dir / result_filename
-            
-            # Convert Pydantic model to dict for JSON serialization
+            # Save result to database
             result_dict = result.model_dump()
             
-            with open(result_path, 'w') as f:
-                json.dump(result_dict, f, indent=2, default=str)
+            # Save result to database
+            db = SessionLocal()
+            try:
+                job_uuid = UUID(job_id)
+                
+                # Check if result already exists
+                existing_result = db.query(GapAnalysisResult).filter(GapAnalysisResult.job_id == job_uuid).first()
+                
+                if existing_result:
+                    # Update existing result
+                    existing_result.result_data = result_dict
+                    logger.info(f"🔄 Updated existing result for job {job_id}")
+                else:
+                    # Create new result
+                    new_result = GapAnalysisResult(
+                        job_id=job_uuid,
+                        result_data=result_dict
+                    )
+                    db.add(new_result)
+                    logger.info(f"💾 Saved new result for job {job_id} to database")
+                
+                db.commit()
+                
+            finally:
+                db.close()
             
             # Update job completion
             job.status = JobStatus.COMPLETED
             job.completed_at = datetime.utcnow()
-            job.result_file = result_filename
+            job.result_file = f"gap_analysis_{job_id}_{int(time.time())}.json"  # Keep for backwards compatibility
             gap_count = len(result.validated_gaps) if result.validated_gaps else 0
             job.progress_message = f"Analysis completed! Found {gap_count} validated research gaps."
             
