@@ -3,7 +3,7 @@ Database connection and models for gap analysis persistence.
 """
 
 import os
-from sqlalchemy import create_engine, Column, String, DateTime, Text, UUID
+from sqlalchemy import create_engine, Column, String, DateTime, Text, UUID, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.dialects.postgresql import JSONB
@@ -70,7 +70,7 @@ def test_connection():
     """Test database connection."""
     try:
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
         print(" Database connection successful!")
         return True
