@@ -243,9 +243,14 @@ async def gap_analysis_health():
     Returns service status and operational metrics.
     """
     try:
-        # Count total jobs from disk
-        job_files = list(background_processor.jobs_dir.glob("job_*.json"))
-        total_jobs = len(job_files)
+        # Count total jobs from disk using reliable os.listdir
+        import os
+        try:
+            job_file_names = [f for f in os.listdir(background_processor.jobs_dir) 
+                            if f.startswith("job_") and f.endswith(".json")]
+            total_jobs = len(job_file_names)
+        except OSError:
+            total_jobs = 0  # Directory might not exist or be readable
         
         return {
             "status": "healthy",

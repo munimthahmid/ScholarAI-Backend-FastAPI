@@ -48,10 +48,12 @@ class GapAnalysisBackgroundProcessor:
         self.running_jobs_tracker: Dict[str, JobInfo] = {}
         
         # Create directories for persistent storage using absolute paths
-        # Get the app root directory (where main.py is located)
-        app_root = Path(__file__).parent.parent.parent.parent  # Go up to project root
-        self.results_dir = app_root / "gap_analysis_results"
-        self.jobs_dir = app_root / "gap_analysis_jobs"
+        # The folders are at the same level as the 'app' folder, not inside it
+        # From: app/services/gap_analyzer/background_processor.py
+        # Go up to: app/services/gap_analyzer -> app/services -> app -> project_root
+        project_root = Path(__file__).parent.parent.parent.parent  # Go up to project root
+        self.results_dir = project_root / "gap_analysis_results"
+        self.jobs_dir = project_root / "gap_analysis_jobs"
         
         # Create directories if they don't exist
         self.results_dir.mkdir(exist_ok=True)
