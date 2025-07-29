@@ -21,6 +21,7 @@ class GapAnalysisSubmissionRequest(BaseModel):
     url: HttpUrl
     max_papers: Optional[int] = 10
     validation_threshold: Optional[int] = 2
+    analysis_mode: Optional[str] = "deep"  # "light" or "deep"
 
 class GapAnalysisSubmissionResponse(BaseModel):
     """Response when submitting gap analysis"""
@@ -56,11 +57,39 @@ async def submit_gap_analysis(request: GapAnalysisSubmissionRequest):
         Job submission confirmation with tracking ID
     """
     try:
+        # Enhanced input validation
+        if not request.url:
+            raise HTTPException(
+                status_code=400,
+                detail="URL is required for gap analysis"
+            )
+        
+        # Validate analysis_mode parameter
+        if request.analysis_mode and request.analysis_mode not in ["light", "deep"]:
+            raise HTTPException(
+                status_code=400,
+                detail="analysis_mode must be either 'light' or 'deep'"
+            )
+        
+        # Validate parameter ranges
+        if request.max_papers and (request.max_papers < 5 or request.max_papers > 20):
+            raise HTTPException(
+                status_code=400,
+                detail="max_papers must be between 5 and 20"
+            )
+        
+        if request.validation_threshold and (request.validation_threshold < 1 or request.validation_threshold > 5):
+            raise HTTPException(
+                status_code=400,
+                detail="validation_threshold must be between 1 and 5"
+            )
+        
         # Convert to internal request model
         gap_request = GapAnalysisRequest(
             url=str(request.url),
             max_papers=request.max_papers or 10,
-            validation_threshold=request.validation_threshold or 2
+            validation_threshold=request.validation_threshold or 2,
+            analysis_mode=request.analysis_mode or "deep"
         )
         
         # Submit job for background processing
@@ -69,7 +98,7 @@ async def submit_gap_analysis(request: GapAnalysisSubmissionRequest):
         # Estimate processing time based on parameters
         estimated_minutes = max(3, (gap_request.max_papers * 0.8) + 2)
         
-        logger.info(f"🎯 Gap analysis job {job_id} submitted for {request.url}")
+        logger.info(f"🎯 Gap analysis job {job_id} submitted for {request.url} (mode: {gap_request.analysis_mode}, papers: {gap_request.max_papers})")
         
         return GapAnalysisSubmissionResponse(
             job_id=job_id,
@@ -78,11 +107,14 @@ async def submit_gap_analysis(request: GapAnalysisSubmissionRequest):
             estimated_time_minutes=int(estimated_minutes)
         )
         
+    except HTTPException:
+        # Re-raise HTTP exceptions (validation errors)
+        raise
     except Exception as e:
-        logger.error(f"Failed to submit gap analysis: {str(e)}")
+        logger.error(f"Unexpected error submitting gap analysis for {request.url}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to submit gap analysis: {str(e)}"
+            detail=f"Internal server error: Failed to submit gap analysis job. Please try again or contact support if the problem persists."
         )
 
 @router.get("/status/{job_id}", response_model=JobStatusResponse)
@@ -97,23 +129,32 @@ async def get_job_status(job_id: str):
         Current job status and progress information
     """
     try:
-        status_info = background_processor.get_job_status(job_id)
-        
-        if not status_info:
+        # Validate job_id format
+        if not job_id or not job_id.strip():
             raise HTTPException(
-                status_code=404,
-                detail=f"Job {job_id} not found"
+                status_code=400,
+                detail="Job ID is required and cannot be empty"
             )
         
+        status_info = background_processor.get_job_status(job_id.strip())
+        
+        if not status_info:
+            logger.warning(f"Job status requested for non-existent job: {job_id}")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Gap analysis job '{job_id}' not found. Job may have expired or never existed."
+            )
+        
+        logger.debug(f"Retrieved status for job {job_id}: {status_info['status']}")
         return JobStatusResponse(**status_info)
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get job status: {str(e)}")
+        logger.error(f"Unexpected error getting job status for {job_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get job status: {str(e)}"
+            detail="Internal server error: Failed to retrieve job status. Please try again."
         )
 
 @router.get("/result/{job_id}")
@@ -128,53 +169,77 @@ async def get_job_result(job_id: str):
         Complete gap analysis result with all research intelligence
     """
     try:
+        # Validate job_id format
+        if not job_id or not job_id.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Job ID is required and cannot be empty"
+            )
+        
+        job_id = job_id.strip()
+        
         # First check if job exists and is completed
         status_info = background_processor.get_job_status(job_id)
         
         if not status_info:
+            logger.warning(f"Job result requested for non-existent job: {job_id}")
             raise HTTPException(
                 status_code=404,
-                detail=f"Job {job_id} not found"
+                detail=f"Gap analysis job '{job_id}' not found. Job may have expired or never existed."
             )
         
-        if status_info["status"] == JobStatus.PENDING.value:
+        current_status = status_info["status"]
+        
+        if current_status == JobStatus.PENDING.value:
             raise HTTPException(
                 status_code=202,  # Accepted but not ready
-                detail="Job is still pending. Please check back later."
+                detail="Gap analysis is still queued for processing. Please check back in a few minutes."
             )
         
-        if status_info["status"] == JobStatus.RUNNING.value:
+        if current_status == JobStatus.RUNNING.value:
+            progress = status_info.get('progress_message', 'Processing...')
             raise HTTPException(
                 status_code=202,  # Accepted but not ready
-                detail=f"Job is still running. Progress: {status_info['progress_message']}"
+                detail=f"Gap analysis is still running. Current phase: {progress}"
             )
         
-        if status_info["status"] == JobStatus.FAILED.value:
+        if current_status == JobStatus.FAILED.value:
+            error_msg = status_info.get('error', 'Unknown error occurred during analysis')
+            logger.error(f"Job {job_id} failed: {error_msg}")
             raise HTTPException(
                 status_code=500,
-                detail=f"Job failed: {status_info.get('error', 'Unknown error')}"
+                detail=f"Gap analysis failed: {error_msg}"
             )
         
         # Get the actual result
         result = background_processor.get_job_result(job_id)
         
         if not result:
+            logger.error(f"Job {job_id} completed but result file not found")
             raise HTTPException(
                 status_code=500,
-                detail="Job completed but result file not found"
+                detail="Gap analysis completed but results are missing. Please try re-running the analysis."
             )
         
-        logger.info(f"📊 Gap analysis result retrieved for job {job_id}")
+        # Validate result structure
+        if not isinstance(result, dict) or 'validated_gaps' not in result:
+            logger.error(f"Job {job_id} returned invalid result structure")
+            raise HTTPException(
+                status_code=500,
+                detail="Gap analysis completed but returned invalid results. Please try re-running the analysis."
+            )
+        
+        logger.info(f"📊 Gap analysis result retrieved for job {job_id} - {len(result.get('validated_gaps', []))} gaps found")
         
         return JSONResponse(content=result)
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get job result: {str(e)}")
+        logger.error(f"Unexpected error getting job result for {job_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get job result: {str(e)}"
+            detail="Internal server error: Failed to retrieve gap analysis results. Please try again."
         )
 
 @router.get("/jobs", response_model=List[JobStatusResponse])

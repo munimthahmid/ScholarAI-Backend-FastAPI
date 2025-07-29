@@ -320,6 +320,11 @@ class GapAnalysisBackgroundProcessor:
             job.progress_message = "Phase 2: Discovering research gaps and expanding frontier..."
             self._save_job_status(job_id)
             
+            # CRITICAL FIX: Ensure orchestrator state is reset for each new analysis
+            # This prevents accumulation of gaps from previous analyses
+            logger.info("🔄 Resetting orchestrator state before starting new analysis")
+            await self.orchestrator.initialize()
+            
             # Run the actual analysis
             result = await self.orchestrator.analyze_research_gaps(job.request)
             

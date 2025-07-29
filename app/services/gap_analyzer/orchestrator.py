@@ -63,7 +63,11 @@ class GapAnalysisOrchestrator:
             logger.error(f"Failed to initialize gap analysis orchestrator: {str(e)}")
             raise
         
-        # EXPANDING FRONTIER ARCHITECTURE - State tracking
+        # CRITICAL FIX: Reset state for each new analysis to prevent accumulation
+        # This fixes the bug where gaps from previous analyses were being appended
+        logger.info("🔄 Resetting orchestrator state for new analysis")
+        
+        # EXPANDING FRONTIER ARCHITECTURE - State tracking (RESET FOR EACH ANALYSIS)
         self.gap_search_queue: List[ResearchGap] = []  # Gaps waiting to be searched for solutions
         self.potential_gaps_db: List[ResearchGap] = []  # All discovered gaps (growing)
         self.final_gaps_list: List[ValidatedGap] = []   # Validated unsolved gaps
@@ -71,7 +75,7 @@ class GapAnalysisOrchestrator:
         self.analyzed_papers: List[PaperAnalysis] = []  # All analyzed papers
         self.research_frontier: Set[str] = set()        # Active research topics being explored
         
-        # Statistics tracking
+        # Statistics tracking (RESET FOR EACH ANALYSIS)
         self.stats = {
             "gaps_discovered": 0,
             "gaps_eliminated": 0,
@@ -80,6 +84,8 @@ class GapAnalysisOrchestrator:
             "frontier_expansions": 0,
             "research_areas_explored": 0
         }
+        
+        logger.info("✅ Orchestrator state reset complete - ready for fresh analysis")
     
     async def analyze_research_gaps(self, request: GapAnalysisRequest) -> GapAnalysisResponse:
         """
@@ -105,10 +111,10 @@ class GapAnalysisOrchestrator:
             
             # Adjust parameters based on analysis mode
             if request.analysis_mode == "light":
-                # Light mode: reduce scope for faster processing
-                max_papers = min(request.max_papers, 5)  # Cap at 5 papers
+                # Light mode: aggressive optimization for 2-3 minute completion
+                max_papers = min(request.max_papers, 4)  # Cap at 4 papers for speed
                 validation_threshold = 1  # Minimal validation
-                logger.info(f"🚀 Light analysis mode: {max_papers} papers, minimal validation")
+                logger.info(f"🚀 Light analysis mode: {max_papers} papers, minimal validation, fast processing")
             else:
                 # Deep mode: use full parameters
                 max_papers = request.max_papers
@@ -117,7 +123,7 @@ class GapAnalysisOrchestrator:
             
             # Phase 2: Main Exploration Loop
             logger.info("Phase 2: Main exploration loop...")
-            await self._phase_2_expanding_frontier(max_papers)
+            await self._phase_2_expanding_frontier(max_papers, request.analysis_mode)
             
             # Phase 3: Gap Validation Loop
             logger.info("Phase 3: Gap validation loop...")
@@ -243,7 +249,7 @@ class GapAnalysisOrchestrator:
             
             # Phase 2: EXPANDING FRONTIER - Search each gap for solutions and discover new research areas
             logger.info("🚀 Phase 2: EXPANDING FRONTIER - Growing research landscape...")
-            await self._phase_2_expanding_frontier(max_papers)
+            await self._phase_2_expanding_frontier(max_papers, "deep")  # Default to deep mode for text analysis
             
             # Phase 3: Final Gap Validation - Validate remaining gaps with comprehensive evidence
             logger.info("✅ Phase 3: FINAL VALIDATION - Confirming unsolved research gaps...")
@@ -347,7 +353,7 @@ class GapAnalysisOrchestrator:
         logger.info(f"Seed analysis complete. Found {len(self.potential_gaps_db)} initial gaps")
         return seed_analysis
     
-    async def _phase_2_expanding_frontier(self, max_papers: int):
+    async def _phase_2_expanding_frontier(self, max_papers: int, analysis_mode: str = "deep"):
         """
         Phase 2: EXPANDING FRONTIER - For each gap, search for solutions and grow research landscape.
         
@@ -358,12 +364,22 @@ class GapAnalysisOrchestrator:
         4. Analyze all found papers to discover new gaps and eliminate solved ones
         5. Continue until convergence or resource limits
         """
+        # Light mode optimizations for speed
+        if analysis_mode == "light":
+            # Aggressively limit gaps for light mode - prioritize speed over completeness
+            max_gaps_to_process = min(3, len(self.gap_search_queue))  # Process max 3 gaps
+            self.gap_search_queue = self.gap_search_queue[:max_gaps_to_process]
+            logger.info(f"🚀 Light mode: Limited to {max_gaps_to_process} gaps for fast processing")
+        
         logger.info(f"🚀 Starting frontier expansion with {len(self.gap_search_queue)} gaps to explore")
         
         papers_analyzed = 1  # Start with 1 (seed paper already analyzed)
         gaps_processed = 0
         
-        while self.gap_search_queue and papers_analyzed < max_papers and gaps_processed < max_papers:
+        # Light mode: reduce max iterations for speed
+        max_gaps_limit = 3 if analysis_mode == "light" else max_papers
+        
+        while self.gap_search_queue and papers_analyzed < max_papers and gaps_processed < max_gaps_limit:
             # Step 1: Pick next gap to explore
             current_gap = self.gap_search_queue.pop(0)
             gaps_processed += 1
