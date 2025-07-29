@@ -11,12 +11,12 @@ from sqlalchemy.sql import func
 from datetime import datetime
 import uuid
 
-# Database configuration from environment variables
-DB_HOST = os.getenv("CORE_DB_HOST", "localhost")
-DB_PORT = os.getenv("CORE_DB_PORT", "5433")
-DB_NAME = os.getenv("CORE_DB_NAME", "scholarai_core")
-DB_USER = os.getenv("CORE_DB_USER", "scholar")
-DB_PASSWORD = os.getenv("CORE_DB_PASSWORD", "FindSolace@0")
+# Hardcoded database configuration for deployment
+DB_HOST = "core-db"  # Docker container name
+DB_PORT = "5432"     # Internal container port
+DB_NAME = "scholarai_core"
+DB_USER = "scholar" 
+DB_PASSWORD = "FindSolace@0"
 
 # Create database URL
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
