@@ -83,8 +83,22 @@ class GapAnalysisBackgroundProcessor:
             logger.info(f"📂 [RELOAD] Jobs dir exists: {self.jobs_dir.exists()}")
             logger.info(f"📂 [RELOAD] Results dir exists: {self.results_dir.exists()}")
             
-            job_files = list(self.jobs_dir.glob("job_*.json"))
-            result_files = list(self.results_dir.glob("gap_analysis_*.json"))
+            # Use os.listdir for more reliable file listing
+            try:
+                job_file_names = [f for f in os.listdir(self.jobs_dir) if f.startswith("job_") and f.endswith(".json")]
+                job_files = [self.jobs_dir / f for f in job_file_names]
+                logger.info(f"📄 [RELOAD] Job file names: {job_file_names}")
+            except OSError as e:
+                logger.error(f"❌ [RELOAD] Cannot list jobs directory: {str(e)}")
+                job_files = []
+            
+            try:
+                result_file_names = [f for f in os.listdir(self.results_dir) if f.startswith("gap_analysis_") and f.endswith(".json")]
+                result_files = [self.results_dir / f for f in result_file_names]
+                logger.info(f"📄 [RELOAD] Result file names: {result_file_names}")
+            except OSError as e:
+                logger.error(f"❌ [RELOAD] Cannot list results directory: {str(e)}")
+                result_files = []
             
             logger.info(f"🔧 [RELOAD] Found {len(job_files)} job files, {len(result_files)} result files")
             
@@ -332,9 +346,20 @@ class GapAnalysisBackgroundProcessor:
             logger.info(f"📂 [LIST_JOBS] Jobs directory: {self.jobs_dir.absolute()}")
             logger.info(f"📂 [LIST_JOBS] Directory exists: {self.jobs_dir.exists()}")
             
-            # Get all job files from disk
-            job_files = list(self.jobs_dir.glob("job_*.json"))
-            
+            # Get all job files from disk using os.listdir (more reliable than glob)
+            try:
+                all_files = os.listdir(self.jobs_dir)
+                job_files = [self.jobs_dir / f for f in all_files if f.startswith("job_") and f.endswith(".json")]
+                logger.info(f"📄 [LIST_JOBS] Raw files found: {len(all_files)}")
+                logger.info(f"📄 [LIST_JOBS] Job files filtered: {len(job_files)}")
+            except OSError as e:
+                logger.error(f"❌ [LIST_JOBS] Cannot list directory {self.jobs_dir}: {str(e)}")
+                return []
+
+            logger.info("Files are: ")
+            for job_file in job_files:
+                logger.info(f"📄 [LIST_JOBS] Found job file: {job_file.name}")
+
             logger.info(f"📄 [LIST_JOBS] Found {len(job_files)} job files")
             for i, job_file in enumerate(job_files[:5]):  # Log first 5 files
                 logger.info(f"📄 [LIST_JOBS] File {i+1}: {job_file.name}")
