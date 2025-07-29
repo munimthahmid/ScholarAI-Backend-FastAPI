@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, HttpUrl
 from typing import List, Dict, Any, Optional
+from pathlib import Path
 import logging
 
 from app.services.gap_analyzer.models import GapAnalysisRequest
@@ -253,8 +254,10 @@ async def gap_analysis_health():
             "running_jobs": background_processor.running_jobs,
             "max_concurrent_jobs": background_processor.max_concurrent_jobs,
             "total_jobs": total_jobs,
-            "results_directory": str(background_processor.results_dir),
-            "jobs_directory": str(background_processor.jobs_dir),
+            "results_directory": str(background_processor.results_dir.absolute()),
+            "jobs_directory": str(background_processor.jobs_dir.absolute()),
+            "working_directory": str(Path.cwd()),
+            "storage_type": "JSON files with absolute paths",
             "features": [
                 "Async background processing",
                 "Job status tracking", 

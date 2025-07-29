@@ -46,11 +46,19 @@ class GapAnalysisBackgroundProcessor:
         # Only keep running jobs in memory - everything else is read from disk
         self.running_jobs_tracker: Dict[str, JobInfo] = {}
         
-        # Create directories for persistent storage
-        self.results_dir = Path("gap_analysis_results")
-        self.jobs_dir = Path("gap_analysis_jobs")
+        # Create directories for persistent storage using absolute paths
+        # Get the app root directory (where main.py is located)
+        app_root = Path(__file__).parent.parent.parent.parent  # Go up to project root
+        self.results_dir = app_root / "gap_analysis_results"
+        self.jobs_dir = app_root / "gap_analysis_jobs"
+        
+        # Create directories if they don't exist
         self.results_dir.mkdir(exist_ok=True)
         self.jobs_dir.mkdir(exist_ok=True)
+        
+        logger.info(f"📂 Using absolute paths:")
+        logger.info(f"   Jobs directory: {self.jobs_dir.absolute()}")
+        logger.info(f"   Results directory: {self.results_dir.absolute()}")
         
         # Track running jobs to prevent overload
         self.max_concurrent_jobs = 2
