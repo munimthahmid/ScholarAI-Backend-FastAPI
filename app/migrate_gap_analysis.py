@@ -23,6 +23,25 @@ logger = logging.getLogger(__name__)
 from db.database import create_tables, test_connection, SessionLocal, GapAnalysisJob, GapAnalysisResult
 
 
+def serialize_datetime(obj):
+    """JSON serializer function that handles datetime objects"""
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+
+def clean_json_data(data):
+    """Recursively clean JSON data to ensure all datetime objects are serialized"""
+    if isinstance(data, dict):
+        return {key: clean_json_data(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [clean_json_data(item) for item in data]
+    elif isinstance(data, datetime):
+        return data.isoformat()
+    else:
+        return data
+
+
 def load_json_file(file_path: Path) -> dict:
     """Load and parse JSON file."""
     try:
@@ -65,11 +84,14 @@ def migrate_existing_data():
                             logger.info(f"⚠️  Job {job_id} already exists, skipping...")
                             continue
                         
+                        # Clean the job data to handle datetime objects
+                        cleaned_job_data = clean_json_data(job_data)
+                        
                         # Create new job record
                         new_job = GapAnalysisJob(
                             id=job_id,
                             status=job_data.get("status", "completed"),
-                            job_data=job_data,
+                            job_data=cleaned_job_data,
                             analysis_mode=job_data.get("analysis_mode", "comprehensive")
                         )
                         db.add(new_job)
@@ -100,10 +122,13 @@ def migrate_existing_data():
                                 logger.info(f"⚠️  Result for job {job_id} already exists, skipping...")
                                 continue
                             
+                            # Clean the result data to handle datetime objects
+                            cleaned_result_data = clean_json_data(result_data)
+                            
                             # Create new result record
                             new_result = GapAnalysisResult(
                                 job_id=job_id,
-                                result_data=result_data
+                                result_data=cleaned_result_data
                             )
                             db.add(new_result)
                             results_migrated += 1
