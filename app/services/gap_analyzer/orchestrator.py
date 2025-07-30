@@ -142,10 +142,22 @@ class GapAnalysisOrchestrator:
                 await self._phase_3_final_validation(validation_threshold, timeout_deadline)
             else:
                 logger.info("Phase 3: Skipped due to timeout - using all discovered gaps as validated")
-                # Convert all potential gaps to validated gaps with minimal processing
+                # Convert all potential gaps to validated gaps with proper enrichment
                 for gap in self.potential_gaps_db[:5]:  # Limit to top 5 for performance
-                    validated_gap = await self._quick_gap_enrichment(gap)
-                    self.final_gaps_list.append(validated_gap)
+                    # Try proper enrichment first, fallback to quick enrichment if needed
+                    try:
+                        validated_gap = await self.gap_validator.enrich_validated_gap(gap)
+                        if validated_gap:
+                            self.final_gaps_list.append(validated_gap)
+                            logger.info(f"✅ Gap enriched successfully (timeout skip): {gap.description[:50]}...")
+                        else:
+                            logger.warning(f"Enrichment returned None (timeout skip) - using quick enrichment")
+                            validated_gap = await self._quick_gap_enrichment(gap)
+                            self.final_gaps_list.append(validated_gap)
+                    except Exception as enrichment_error:
+                        logger.warning(f"Enrichment failed (timeout skip): {enrichment_error} - using quick enrichment")
+                        validated_gap = await self._quick_gap_enrichment(gap)
+                        self.final_gaps_list.append(validated_gap)
             
             # Phase 4: Final Response Synthesis
             logger.info("Phase 4: Final response synthesis...")
@@ -556,11 +568,24 @@ class GapAnalysisOrchestrator:
             # Check timeout before each validation
             if timeout_deadline and time.time() >= timeout_deadline:
                 logger.warning(f"⏰ Timeout reached during validation, processing remaining gaps as validated")
-                # Convert remaining gaps to validated gaps without full validation
+                # Convert remaining gaps to validated gaps with proper enrichment
                 for remaining_gap in gaps_to_validate[gaps_to_validate.index(gap):]:
                     if remaining_gap.validation_strikes < validation_threshold:
-                        validated_gap = await self._quick_gap_enrichment(remaining_gap)
-                        self.final_gaps_list.append(validated_gap)
+                        # Try proper enrichment first, fallback to quick enrichment if needed
+                        try:
+                            validated_gap = await self.gap_validator.enrich_validated_gap(remaining_gap)
+                            if validated_gap:
+                                self.final_gaps_list.append(validated_gap)
+                                logger.info(f"✅ Gap enriched successfully after timeout: {remaining_gap.description[:50]}...")
+                            else:
+                                logger.warning(f"Enrichment returned None after timeout - using quick enrichment")
+                                validated_gap = await self._quick_gap_enrichment(remaining_gap)
+                                self.final_gaps_list.append(validated_gap)
+                        except Exception as enrichment_error:
+                            logger.warning(f"Enrichment failed after timeout: {enrichment_error} - using quick enrichment")
+                            validated_gap = await self._quick_gap_enrichment(remaining_gap)
+                            self.final_gaps_list.append(validated_gap)
+                        
                         if remaining_gap in self.potential_gaps_db:
                             self.potential_gaps_db.remove(remaining_gap)
                 break
@@ -617,9 +642,16 @@ class GapAnalysisOrchestrator:
                 
                 # Step 3.6: Graduate to final gaps if threshold reached
                 if gap.validation_strikes >= validation_threshold:
+                    validated_gap = None
                     try:
                         validated_gap = await self.gap_validator.enrich_validated_gap(gap)
-                        self.final_gaps_list.append(validated_gap)
+                        if validated_gap:
+                            self.final_gaps_list.append(validated_gap)
+                            logger.info(f"✅ Gap enriched successfully: {gap.description[:50]}...")
+                        else:
+                            logger.warning(f"Gap enrichment returned None - using fallback")
+                            validated_gap = await self._quick_gap_enrichment(gap)
+                            self.final_gaps_list.append(validated_gap)
                     except Exception as enrichment_error:
                         logger.warning(f"Gap enrichment failed (likely Gemini API): {enrichment_error}")
                         # Fallback: use quick enrichment

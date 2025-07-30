@@ -324,8 +324,15 @@ class GapValidator:
         """
         # Check if model is available for enrichment
         if not self.model:
-            logger.error("Gemini model not available for gap enrichment")
-            return None
+            logger.error("Gemini model not available for gap enrichment - reinitializing")
+            # Try to reinitialize the model
+            if settings.GEMINI_API_KEY:
+                genai.configure(api_key=settings.GEMINI_API_KEY)
+                self.model = genai.GenerativeModel('gemini-2.5-flash')
+                logger.info("✅ Model reinitialized successfully")
+            else:
+                logger.error("No API key available for model reinitialization")
+                return None
         
         try:
             prompt = f"""
