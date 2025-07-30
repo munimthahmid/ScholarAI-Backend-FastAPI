@@ -15,7 +15,7 @@ class GapAnalysisRequest(BaseModel):
     url: str = Field(..., description="URL of the seed paper to analyze")
     max_papers: int = Field(default=10, ge=5, le=20, description="Maximum papers to analyze")
     validation_threshold: int = Field(default=2, ge=1, le=5, description="Number of validation attempts per gap")
-    analysis_mode: AnalysisMode = Field(default="deep", description="Analysis depth mode: 'light' for fast 2-3 min analysis, 'deep' for comprehensive 10-15 min analysis")
+    analysis_mode: AnalysisMode = Field(default="deep", description="Analysis depth mode: 'light' for fast 1 min analysis, 'deep' for comprehensive 10-15 min analysis")
 
 
 @dataclass

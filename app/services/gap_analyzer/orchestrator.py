@@ -100,12 +100,12 @@ class GapAnalysisOrchestrator:
         request_id = str(uuid4())[:8]
         start_time = time.time()
         
-        # Set hard timeout for light mode (2 minutes = 120 seconds)
-        timeout_seconds = 120 if request.analysis_mode == "light" else 900  # 15 minutes for deep mode
+        # Set hard timeout for light mode (1 minute = 60 seconds)
+        timeout_seconds = 60 if request.analysis_mode == "light" else 900  # 15 minutes for deep mode
         timeout_deadline = start_time + timeout_seconds
         
         logger.info(f"Starting {request.analysis_mode} gap analysis {request_id} for paper: {request.url}")
-        logger.info(f"⏰ Analysis timeout set to {timeout_seconds} seconds ({'2 minutes' if request.analysis_mode == 'light' else '15 minutes'})")
+        logger.info(f"⏰ Analysis timeout set to {timeout_seconds} seconds ({'1 minute' if request.analysis_mode == 'light' else '15 minutes'})")
         
         try:
             # Phase 1: Seeding the Exploration
