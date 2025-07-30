@@ -575,8 +575,7 @@ class GapAnalysisOrchestrator:
                 except Exception as gemini_error:
                     logger.warning(f"Gemini API failed for validation queries: {gemini_error}")
                     # Fallback: create basic queries from gap description
-                    gap_words = gap.description.split()[:3]
-                    validation_queries = [f"solving {' '.join(gap_words)}", f"addressing {' '.join(gap_words)}"]
+                    validation_queries = ["GEMINI API KEY EXHAUSTED", "GEMINI API KEY EXHAUSTED"]
                 
                 # Step 3.2: Search for papers that might invalidate the gap
                 validation_paper_urls = await self.search_agent.search_for_gap_validation(gap.description)
@@ -648,55 +647,52 @@ class GapAnalysisOrchestrator:
         logger.info(f"🔧 Quick enrichment for gap: {gap.description[:50]}...")
         
         # Generate basic metrics based on gap characteristics
-        description_length = len(gap.description)
-        word_count = len(gap.description.split())
-        
         gap_metrics = GapMetrics(
-            difficulty_score=min(8.0, max(4.0, 5.0 + word_count / 20)),
-            innovation_potential=min(9.0, max(6.0, 7.0 + description_length / 100)),
-            commercial_viability=min(8.0, max(4.0, 5.5 + word_count / 30)),
-            time_to_solution=f"{max(1, word_count // 10)}-{max(2, word_count // 8)} years",
-            funding_likelihood=min(85.0, max(50.0, 65.0 + word_count)),
-            collaboration_score=min(9.0, max(5.0, 6.5 + description_length / 150)),
-            ethical_considerations=min(7.0, max(2.0, 3.5 + word_count / 40))
+            difficulty_score=0.0,
+            innovation_potential=0.0,
+            commercial_viability=0.0,
+            time_to_solution="GEMINI API KEY EXHAUSTED",
+            funding_likelihood=0.0,
+            collaboration_score=0.0,
+            ethical_considerations=0.0
         )
         
         research_context = ResearchContext(
-            related_gaps=["Related research areas requiring analysis"],
-            prerequisite_technologies=["Standard research methodologies", "Domain expertise"],
-            competitive_landscape="Active research area with emerging opportunities",
-            key_researchers=["Research community members"],
-            active_research_groups=["Academic and industry groups"],
-            recent_breakthroughs=["Recent developments in the field"]
+            related_gaps=["GEMINI API KEY EXHAUSTED"],
+            prerequisite_technologies=["GEMINI API KEY EXHAUSTED"],
+            competitive_landscape="GEMINI API KEY EXHAUSTED",
+            key_researchers=["GEMINI API KEY EXHAUSTED"],
+            active_research_groups=["GEMINI API KEY EXHAUSTED"],
+            recent_breakthroughs=["GEMINI API KEY EXHAUSTED"]
         )
         
         # Create basic validated gap
         validated_gap = ValidatedGap(
             gap_id=gap.gap_id,
-            gap_title=f"Research Opportunity: {gap.description[:60]}..." if len(gap.description) > 60 else gap.description,
-            description=gap.description,
+            gap_title="GEMINI API KEY EXHAUSTED",
+            description="GEMINI API KEY EXHAUSTED",
             source_paper=gap.source_paper,
-            source_paper_title=gap.source_paper_title,
-            validation_evidence="Gap identified through systematic analysis and survived validation process",
-            potential_impact="Represents genuine research opportunity with potential for significant contribution to the field",
+            source_paper_title="GEMINI API KEY EXHAUSTED",
+            validation_evidence="GEMINI API KEY EXHAUSTED",
+            potential_impact="GEMINI API KEY EXHAUSTED",
             suggested_approaches=[
-                "Conduct comprehensive literature review in the specific domain",
-                "Design experiments to address the identified limitation",
-                "Explore novel methodologies and validate with empirical results"
+                "GEMINI API KEY EXHAUSTED",
+                "GEMINI API KEY EXHAUSTED",
+                "GEMINI API KEY EXHAUSTED"
             ],
-            category=gap.category or "Research Opportunity",
+            category="GEMINI API KEY EXHAUSTED",
             gap_metrics=gap_metrics,
             research_context=research_context,
             validation_attempts=gap.validation_strikes,
             papers_checked_against=1,
-            confidence_score=min(85.0, max(60.0, 70.0 + gap.validation_strikes * 5)),
-            opportunity_tags=["Research Gap", "Innovation Opportunity"],
-            interdisciplinary_connections=[gap.category or "General Research"],
-            industry_relevance=["Technology Sector", "Research Institutions"],
-            estimated_researcher_years=max(1.0, word_count / 25),
-            recommended_team_size=f"{max(1, word_count // 30)}-{max(2, word_count // 20)} researchers",
-            key_milestones=["Literature review and methodology design", "Implementation and validation"],
-            success_metrics=["Demonstrate feasibility", "Achieve measurable improvement", "Validate hypothesis"]
+            confidence_score=0.0,
+            opportunity_tags=["GEMINI API KEY EXHAUSTED"],
+            interdisciplinary_connections=["GEMINI API KEY EXHAUSTED"],
+            industry_relevance=["GEMINI API KEY EXHAUSTED"],
+            estimated_researcher_years=0.0,
+            recommended_team_size="GEMINI API KEY EXHAUSTED",
+            key_milestones=["GEMINI API KEY EXHAUSTED"],
+            success_metrics=["GEMINI API KEY EXHAUSTED"]
         )
         
         logger.info(f"✅ Quick enrichment complete for gap: {gap.gap_id}")

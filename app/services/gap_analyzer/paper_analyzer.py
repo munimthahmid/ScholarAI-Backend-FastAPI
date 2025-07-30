@@ -348,12 +348,12 @@ class PaperAnalyzer:
                     logger.warning("⚠️ Gemini found 0 gaps - adding fallback gaps to ensure meaningful analysis")
                     # Add fallback gaps based on paper content to ensure we always return something
                     fallback_limitations = [
-                        "Experimental validation may be limited to specific datasets or conditions mentioned in the paper",
-                        "Scalability and generalization to broader real-world scenarios requires further investigation"
+                        "GEMINI API KEY EXHAUSTED",
+                        "GEMINI API KEY EXHAUSTED"
                     ]
                     fallback_future_work = [
-                        "Expand experimental evaluation to additional datasets and use cases",
-                        "Investigate potential improvements to methodology and performance optimization"
+                        "GEMINI API KEY EXHAUSTED",
+                        "GEMINI API KEY EXHAUSTED"
                     ]
                     validated_analysis['limitations'] = fallback_limitations
                     validated_analysis['future_work'] = fallback_future_work
@@ -386,27 +386,27 @@ class PaperAnalyzer:
             
             # Fallback: Return basic analysis structure to keep processing going
             fallback_analysis = {
-                "title": "Research Paper Analysis",
-                "abstract": "Analysis completed with limited API access",
+                "title": "GEMINI API KEY EXHAUSTED",
+                "abstract": "GEMINI API KEY EXHAUSTED - CHANGE GEMINI API KEY",
                 "key_findings": [
-                    "Research presents novel methodology or approach in the field",
-                    "Experimental results demonstrate feasibility of proposed solution",
-                    "Performance metrics show improvement over existing baselines"
+                    "GEMINI API KEY EXHAUSTED",
+                    "GEMINI API KEY EXHAUSTED",
+                    "GEMINI API KEY EXHAUSTED"
                 ],
                 "methods": [
-                    "Systematic experimental methodology",
-                    "Comparative analysis with existing approaches",
-                    "Statistical validation of results"
+                    "GEMINI API KEY EXHAUSTED",
+                    "GEMINI API KEY EXHAUSTED",
+                    "GEMINI API KEY EXHAUSTED"
                 ],
                 "limitations": [
-                    "Experimental validation limited to specific datasets and conditions",
-                    "Scalability to broader real-world scenarios requires investigation",
-                    "Generalization across different domains needs further study"
+                    "GEMINI API KEY EXHAUSTED",
+                    "GEMINI API KEY EXHAUSTED",
+                    "GEMINI API KEY EXHAUSTED"
                 ],
                 "future_work": [
-                    "Expand evaluation to additional datasets and use cases",
-                    "Investigate optimization techniques for improved performance",
-                    "Explore cross-domain applicability and robustness"
+                    "GEMINI API KEY EXHAUSTED",
+                    "GEMINI API KEY EXHAUSTED",
+                    "GEMINI API KEY EXHAUSTED"
                 ],
                 "year": None,
                 "authors": []
