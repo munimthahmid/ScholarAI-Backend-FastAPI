@@ -20,6 +20,18 @@ from ...db.database import SessionLocal, GapAnalysisJob, GapAnalysisResult
 
 logger = logging.getLogger(__name__)
 
+
+def clean_json_data(data):
+    """Recursively clean JSON data to ensure all datetime objects are serialized"""
+    if isinstance(data, dict):
+        return {key: clean_json_data(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [clean_json_data(item) for item in data]
+    elif isinstance(data, datetime):
+        return data.isoformat()
+    else:
+        return data
+
 class JobStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running" 
@@ -512,6 +524,9 @@ class GapAnalysisBackgroundProcessor:
             # Save result to database
             result_dict = result.model_dump()
             
+            # Clean the result data to handle datetime objects
+            cleaned_result_dict = clean_json_data(result_dict)
+            
             # Save result to database
             db = SessionLocal()
             try:
@@ -522,13 +537,13 @@ class GapAnalysisBackgroundProcessor:
                 
                 if existing_result:
                     # Update existing result
-                    existing_result.result_data = result_dict
+                    existing_result.result_data = cleaned_result_dict
                     logger.info(f"🔄 Updated existing result for job {job_id}")
                 else:
                     # Create new result
                     new_result = GapAnalysisResult(
                         job_id=job_uuid,
-                        result_data=result_dict
+                        result_data=cleaned_result_dict
                     )
                     db.add(new_result)
                     logger.info(f"💾 Saved new result for job {job_id} to database")
