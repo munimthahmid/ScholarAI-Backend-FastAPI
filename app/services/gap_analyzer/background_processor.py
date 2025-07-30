@@ -67,29 +67,34 @@ class GapAnalysisBackgroundProcessor:
         """DEBUG: Show statistics about jobs on disk (no longer needed for functionality)."""
         try:
             logger.info(f"🔧 [RELOAD] Starting force reload jobs")
-            logger.info(f"📂 [RELOAD] Jobs directory: {self.jobs_dir.absolute()}")
-            logger.info(f"📂 [RELOAD] Results directory: {self.results_dir.absolute()}")
-            logger.info(f"📂 [RELOAD] Jobs dir exists: {self.jobs_dir.exists()}")
-            logger.info(f"📂 [RELOAD] Results dir exists: {self.results_dir.exists()}")
+            logger.info(f"💾 [RELOAD] Using database storage for jobs")
+            logger.info(f"💾 [RELOAD] Using database storage for jobs and results")
+            logger.info(f"💾 [RELOAD] Database connection available")
             
             # Use os.listdir for more reliable file listing
             try:
-                job_file_names = [f for f in os.listdir(self.jobs_dir) if f.startswith("job_") and f.endswith(".json")]
-                job_files = [self.jobs_dir / f for f in job_file_names]
-                logger.info(f"📄 [RELOAD] Job file names: {job_file_names}")
-            except OSError as e:
-                logger.error(f"❌ [RELOAD] Cannot list jobs directory: {str(e)}")
-                job_files = []
+                # Get job count from database instead of files
+                db = SessionLocal()
+                try:
+                    job_count = db.query(GapAnalysisJob).count()
+                    logger.info(f"📊 [RELOAD] Total jobs in database: {job_count}")
+                finally:
+                    db.close()
+            except Exception as e:
+                logger.error(f"❌ [RELOAD] Cannot access database: {str(e)}")
             
             try:
-                result_file_names = [f for f in os.listdir(self.results_dir) if f.startswith("gap_analysis_") and f.endswith(".json")]
-                result_files = [self.results_dir / f for f in result_file_names]
-                logger.info(f"📄 [RELOAD] Result file names: {result_file_names}")
-            except OSError as e:
-                logger.error(f"❌ [RELOAD] Cannot list results directory: {str(e)}")
-                result_files = []
+                # Get result count from database instead of files
+                db = SessionLocal()
+                try:
+                    result_count = db.query(GapAnalysisResult).count()
+                    logger.info(f"📊 [RELOAD] Total results in database: {result_count}")
+                finally:
+                    db.close()
+            except Exception as e:
+                logger.error(f"❌ [RELOAD] Cannot access database for results: {str(e)}")
             
-            logger.info(f"🔧 [RELOAD] Found {len(job_files)} job files, {len(result_files)} result files")
+            logger.info(f"🔧 [RELOAD] Database storage active for jobs and results")
             
             # List some file names for debugging
             if job_files:
@@ -198,10 +203,19 @@ class GapAnalysisBackgroundProcessor:
     def _delete_job_status(self, job_id: str):
         """Delete job status from persistent storage."""
         try:
-            job_file = self.jobs_dir / f"job_{job_id}.json"
-            if job_file.exists():
-                job_file.unlink()
-                logger.info(f"Deleted job status file for {job_id}")
+            # Job deletion now handled by database - no file operations needed
+            db = SessionLocal()
+            try:
+                job_uuid = UUID(job_id)
+                job = db.query(GapAnalysisJob).filter(GapAnalysisJob.id == job_uuid).first()
+                if job:
+                    db.delete(job)
+                    db.commit()
+                    logger.info(f"Deleted job from database: {job_id}")
+                else:
+                    logger.warning(f"Job {job_id} not found in database for deletion")
+            finally:
+                db.close()
         except Exception as e:
             logger.error(f"Failed to delete job status for {job_id}: {str(e)}")
         
@@ -220,8 +234,8 @@ class GapAnalysisBackgroundProcessor:
         
         logger.info(f"🚀 [SUBMIT] Starting job submission for {job_id}")
         logger.info(f"📄 [SUBMIT] URL: {request.url}")
-        logger.info(f"📂 [SUBMIT] Jobs directory: {self.jobs_dir.absolute()}")
-        logger.info(f"📂 [SUBMIT] Results directory: {self.results_dir.absolute()}")
+        logger.info(f"💾 [SUBMIT] Using database storage for jobs")
+        logger.info(f"💾 [SUBMIT] Using database storage for results")
         
         # Save job to disk immediately
         try:
