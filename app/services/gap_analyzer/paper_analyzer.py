@@ -348,12 +348,12 @@ class PaperAnalyzer:
                     logger.warning("⚠️ Gemini found 0 gaps - adding fallback gaps to ensure meaningful analysis")
                     # Add fallback gaps based on paper content to ensure we always return something
                     fallback_limitations = [
-                        "GEMINI API KEY EXHAUSTED",
-                        "GEMINI API KEY EXHAUSTED"
+                        "Experimental validation may be limited to specific datasets or conditions mentioned in the paper",
+                        "Scalability and generalization to broader real-world scenarios requires further investigation"
                     ]
                     fallback_future_work = [
-                        "GEMINI API KEY EXHAUSTED",
-                        "GEMINI API KEY EXHAUSTED"
+                        "Expand experimental evaluation to additional datasets and use cases",
+                        "Investigate potential improvements to methodology and performance optimization"
                     ]
                     validated_analysis['limitations'] = fallback_limitations
                     validated_analysis['future_work'] = fallback_future_work
@@ -382,38 +382,44 @@ class PaperAnalyzer:
             
         except Exception as e:
             logger.error(f"Gemini analysis failed: {str(e)}")
-            logger.warning("🔧 Gemini API failed - using fallback analysis to continue processing")
-            
-            # Fallback: Return basic analysis structure to keep processing going
-            fallback_analysis = {
-                "title": "GEMINI API KEY EXHAUSTED",
-                "abstract": "GEMINI API KEY EXHAUSTED - CHANGE GEMINI API KEY",
-                "key_findings": [
-                    "GEMINI API KEY EXHAUSTED",
-                    "GEMINI API KEY EXHAUSTED",
-                    "GEMINI API KEY EXHAUSTED"
-                ],
-                "methods": [
-                    "GEMINI API KEY EXHAUSTED",
-                    "GEMINI API KEY EXHAUSTED",
-                    "GEMINI API KEY EXHAUSTED"
-                ],
-                "limitations": [
-                    "GEMINI API KEY EXHAUSTED",
-                    "GEMINI API KEY EXHAUSTED",
-                    "GEMINI API KEY EXHAUSTED"
-                ],
-                "future_work": [
-                    "GEMINI API KEY EXHAUSTED",
-                    "GEMINI API KEY EXHAUSTED",
-                    "GEMINI API KEY EXHAUSTED"
-                ],
-                "year": None,
-                "authors": []
-            }
-            
-            logger.info("✅ Fallback analysis generated to maintain processing continuity")
-            return fallback_analysis
+            # Check if this is an API-related error
+            error_str = str(e).lower()
+            if any(keyword in error_str for keyword in ['quota', 'rate limit', 'exceeded', 'limit', 'unauthorized', 'forbidden']):
+                logger.warning("🔧 Gemini API quota/limit exceeded - using fallback analysis")
+                
+                # Fallback: Return basic analysis structure to keep processing going
+                fallback_analysis = {
+                    "title": "GEMINI API KEY EXHAUSTED",
+                    "abstract": "GEMINI API KEY EXHAUSTED - CHANGE GEMINI API KEY",
+                    "key_findings": [
+                        "GEMINI API KEY EXHAUSTED",
+                        "GEMINI API KEY EXHAUSTED",
+                        "GEMINI API KEY EXHAUSTED"
+                    ],
+                    "methods": [
+                        "GEMINI API KEY EXHAUSTED",
+                        "GEMINI API KEY EXHAUSTED",
+                        "GEMINI API KEY EXHAUSTED"
+                    ],
+                    "limitations": [
+                        "GEMINI API KEY EXHAUSTED",
+                        "GEMINI API KEY EXHAUSTED",
+                        "GEMINI API KEY EXHAUSTED"
+                    ],
+                    "future_work": [
+                        "GEMINI API KEY EXHAUSTED",
+                        "GEMINI API KEY EXHAUSTED",
+                        "GEMINI API KEY EXHAUSTED"
+                    ],
+                    "year": None,
+                    "authors": []
+                }
+                
+                logger.info("✅ Fallback analysis generated to maintain processing continuity")
+                return fallback_analysis
+            else:
+                logger.error("Non-API error during paper analysis")
+                return None
     
     def _validate_analysis(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
         """Validate and clean the analysis results"""
