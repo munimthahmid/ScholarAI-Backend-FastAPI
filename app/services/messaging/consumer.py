@@ -9,7 +9,7 @@ from typing import Dict, Any, Optional
 from aio_pika import IncomingMessage
 
 from .connection import RabbitMQConnection
-from .handlers import WebSearchMessageHandler, MessageHandlerFactory
+from .websearch_handlers import WebSearchMessageHandler, MessageHandlerFactory
 from .handlers_dir.extraction_handler import ExtractionMessageHandler
 from .handlers_dir.structuring_handler import StructuringMessageHandler
 from .handlers_dir.summarization_handler import SummarizationMessageHandler

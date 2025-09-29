@@ -42,6 +42,7 @@ class WebSearchAgent:
 
         # Initialize AI service if enabled
         self.ai_service = None
+        self._ai_available_override = None
         if self.config.search.enable_ai_refinement:
             self.ai_service = AIQueryRefinementService(
                 api_key=self.config.ai.api_key, model_name=self.config.ai.model_name
@@ -130,6 +131,30 @@ class WebSearchAgent:
                 self.ai_service.get_status() if self.ai_service else {"ready": False}
             ),
         }
+
+    # Compatibility properties for tests
+    @property
+    def ai_available(self) -> bool:
+        """Whether AI libraries/client are available for refinement/scoring."""
+        if self._ai_available_override is not None:
+            return bool(self._ai_available_override)
+        return bool(self.ai_service and self.ai_service.is_available)
+
+    @ai_available.setter
+    def ai_available(self, value: bool) -> None:
+        self._ai_available_override = bool(value)
+        if self.ai_service is not None:
+            self.ai_service.is_available = bool(value)
+
+    @property
+    def gemini_client(self):
+        """Underlying Gemini client instance if initialized, else None."""
+        return getattr(self.ai_service, "client", None)
+
+    @gemini_client.setter
+    def gemini_client(self, value) -> None:
+        if self.ai_service is not None:
+            self.ai_service.client = value
 
 
 # Backward compatibility aliases

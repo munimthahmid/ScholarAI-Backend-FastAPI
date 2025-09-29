@@ -6,7 +6,7 @@ message processing, and result publishing.
 """
 
 from .connection import RabbitMQConnection
-from .handlers import WebSearchMessageHandler, MessageHandlerFactory
+from .websearch_handlers import WebSearchMessageHandler, MessageHandlerFactory
 from .handlers_dir.extraction_handler import ExtractionMessageHandler
 from .consumer import ScholarAIConsumer
 

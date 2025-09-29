@@ -101,13 +101,13 @@ class MessageHandlerFactory:
         """
         self._handlers[message_type] = handler
         logger.info(
-            f"📝 Registered handler {handler.__class__.__name__} for '{message_type}'"
+            f"dY\"? Registered handler {handler.__class__.__name__} for '{message_type}'"
         )
 
     def set_default_handler(self, handler: MessageHandler):
         """Set default handler for unrecognized message types"""
         self._default_handler = handler
-        logger.info(f"📝 Set default handler: {handler.__class__.__name__}")
+        logger.info(f"dY\"? Set default handler: {handler.__class__.__name__}")
 
     def get_handler(self, message_type: str) -> MessageHandler:
         """

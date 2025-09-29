@@ -1,10 +1,14 @@
 from fastapi import APIRouter
 from app.api.api_v1.api import api_router as api_v1_router
+from app.api.routes import graphs as graphs_routes
 
 api_router = APIRouter()
 
 # Include API v1 routes
 api_router.include_router(api_v1_router, prefix="/v1")
+
+# LangGraph research graph routes
+api_router.include_router(graphs_routes.router, prefix="/graphs", tags=["Graphs"])
 
 
 @api_router.get("/health")
